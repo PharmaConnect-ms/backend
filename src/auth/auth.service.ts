@@ -10,14 +10,33 @@ export class AuthService {
     private jwtService: JwtService,
   ) {}
 
-  async validateUser(username: string, password: string) {
-    const user = await this.usersService.findByUsername(username);
-    if (!user) throw new UnauthorizedException('User not found');
+  // AuthService.ts
+  async validateUser(usernameOrEmail: string, password: string) {
+    if (!usernameOrEmail || !password) {
+      throw new UnauthorizedException('Username/email and password are required');
+    }
+
+    // Try finding user by either username or email
+    const user = (await this.usersService.findByUsername(usernameOrEmail)) || (await this.usersService.findByEmail(usernameOrEmail));
+
+    if (!user) {
+      throw new UnauthorizedException('User not found');
+    }
 
     const isPasswordValid = await bcrypt.compare(password, user.password);
-    if (!isPasswordValid) throw new UnauthorizedException('Invalid credentials');
+    if (!isPasswordValid) {
+      throw new UnauthorizedException('Invalid credentials');
+    }
 
-    return this.generateToken(user);
+    const token = this.generateToken(user);
+    const payload = {
+      id: user.id,
+      username: user.username,
+      email: user.email,
+      role: user.role,
+    };
+
+    return { ...payload, token };
   }
 
   generateToken(user: any) {
@@ -25,28 +44,23 @@ export class AuthService {
     return { access_token: this.jwtService.sign(payload) };
   }
 
-    // Generate JWT for Google-authenticated users
-    async validateGoogleUser(googleUser: any) {
-      const email = googleUser.email;
-      if (!email) throw new UnauthorizedException('Invalid email');
-      let user = await this.usersService.findByEmail(email as string);
-  
-      // If user does not exist, create a new user in the database
-      if (!user) {
-        user = await this.usersService.createUser({
-          username: googleUser.name,
-          email: googleUser.email,
-          password: null, 
-          role: 'patient',
-          provider: 'google',
-        });
-      }
-  
-      return this.generateToken(user);
+  // Generate JWT for Google-authenticated users
+  async validateGoogleUser(googleUser: any) {
+    const email = googleUser.email;
+    if (!email) throw new UnauthorizedException('Invalid email');
+    let user = await this.usersService.findByEmail(email as string);
+
+    // If user does not exist, create a new user in the database
+    if (!user) {
+      user = await this.usersService.createUser({
+        username: googleUser.name,
+        email: googleUser.email,
+        password: null,
+        role: 'patient',
+        provider: 'google',
+      });
     }
 
-
-    
-
-
+    return this.generateToken(user);
+  }
 }

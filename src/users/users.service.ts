@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import * as bcrypt from 'bcryptjs';
@@ -12,20 +12,39 @@ export class UsersService {
     private usersRepository: Repository<User>,
   ) {}
 
-  async createUser(createUserDto : CreateUserDto): Promise<User> {
-    const { username, email ,  password, role , provider } = createUserDto;
+  async createUser(createUserDto: CreateUserDto): Promise<User> {
+    const { username, email, password, role, provider } = createUserDto;
 
-    if(!email ) {
+    if (!email) {
       throw new Error('Invalid input');
     }
 
-    if(provider === 'google') {
-      const password = null;
+    if (provider === 'google') {
+      const existingUser = await this.usersRepository.findOne({ where: { email } });
+      if (existingUser) {
+        return existingUser; // or maybe throw an exception or update user details
+      }
       const user = this.usersRepository.create({ username, email, role, provider });
       return this.usersRepository.save(user);
-    }else{
+    } else {
       const hashedPassword = await bcrypt.hash(password, 10);
-      const user = this.usersRepository.create({ username, email, password: hashedPassword, role, provider });
+      const existingUser = await this.usersRepository.findOne({
+        where: [{ username }, { email } ],
+      });
+
+      if (existingUser) {
+        return existingUser;
+      }
+
+      // Create and save only if it's truly new
+      const user = this.usersRepository.create({
+        username,
+        email,
+        password: hashedPassword,
+        role,
+        provider,
+      });
+
       return this.usersRepository.save(user);
     }
 
@@ -58,5 +77,4 @@ export class UsersService {
 
     return user;
   }
-
 }

@@ -6,7 +6,7 @@ import { ApiTags, ApiBody, ApiResponse, ApiProperty } from '@nestjs/swagger';
 
 class LoginDto {
   @ApiProperty({ example: 'user@example.com', description: 'Username or email' })
-  username: string;
+  usernameOrEmail: string;
 
   @ApiProperty({ example: 'P@ssw0rd', description: 'User password' })
   password: string;
@@ -22,7 +22,8 @@ export class AuthController {
   @ApiResponse({ status: 200, description: 'Successful login' })
   @ApiResponse({ status: 401, description: 'Invalid credentials' })
   async login(@Body() body: LoginDto) {
-    return this.authService.validateUser(body.username, body.password);
+    const { usernameOrEmail, password } = body;
+    return this.authService.validateUser(usernameOrEmail, password);
   }
 
   @Get('google')

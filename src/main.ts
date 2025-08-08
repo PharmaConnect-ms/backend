@@ -9,6 +9,12 @@ async function bootstrap() {
   const configService = app.get(ConfigService);
   const port = configService.get<number>('PORT') || 5000;
 
+  app.enableCors({
+    origin: 'http://localhost:3000', // allow frontend origin
+    credentials: true, // allow cookies, authorization headers, etc.
+  });
+
+
   // Enable Swagger
   const config = new DocumentBuilder()
     .setTitle('PharmaConnect API')

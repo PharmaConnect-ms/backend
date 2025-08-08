@@ -62,23 +62,23 @@ export class UsersController {
     return this.usersService.findByEmail(email);
   }
 
-@Post('login')
-@ApiOperation({ summary: 'Login' })
-@ApiCreatedResponse({ description: 'User logged in' })
-@ApiBadRequestResponse({ description: 'Invalid input' })
-async login(
-  @Body() createUserDto: CreateUserDto,
-): Promise<User> {
-  if(!createUserDto.email || !createUserDto.password) {
-    throw new Error('Invalid input');
-  }
-  const user = await this.usersService.validateUser(String(createUserDto.email), String(createUserDto.password));
-  if (!user) {
-    throw new Error('Invalid credentials');
-  }
-  return user;
+// @Post('login')
+// @ApiOperation({ summary: 'Login' })
+// @ApiCreatedResponse({ description: 'User logged in' })
+// @ApiBadRequestResponse({ description: 'Invalid input' })
+// async login(
+//   @Body() createUserDto: CreateUserDto,
+// ): Promise<User> {
+//   if(!createUserDto.email || !createUserDto.password) {
+//     throw new Error('Invalid input');
+//   }
+//   const user = await this.usersService.validateUser(String(createUserDto.email), String(createUserDto.password));
+//   if (!user) {
+//     throw new Error('Invalid credentials');
+//   }
+//   return user;
 
-}
+// }
 
 
 
