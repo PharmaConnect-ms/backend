@@ -6,12 +6,12 @@ import {
   ApiCreatedResponse,
   ApiNotFoundResponse,
   ApiOkResponse,
-  ApiOperation, ApiResponse, ApiTags,
+  ApiOperation,
+  ApiTags,
 } from '@nestjs/swagger';
 import { JwtAuthGuard } from 'src/auth/jwt-auth.guard';
 import { CreateUserDto } from './create-user.dto';
 import { User } from './user.entity';
-import { AuthGuard } from '@nestjs/passport';
 
 
 @ApiTags('Users')
@@ -34,7 +34,6 @@ export class UsersController {
     return this.usersService.createUser(createUserDto);
   }
 
-  
   @Get(':id')
   @ApiOperation({ summary: 'Get user by ID' })
   @ApiOkResponse({ description: 'User found' })
@@ -50,7 +49,7 @@ export class UsersController {
   @ApiOkResponse({ description: 'Users found' })
   @UseGuards(JwtAuthGuard)
   async getUsers() {
-    return this.usersService.findall();
+    return this.usersService.findAll();
   }
 
   //find by email 
@@ -62,24 +61,14 @@ export class UsersController {
     return this.usersService.findByEmail(email);
   }
 
-// @Post('login')
-// @ApiOperation({ summary: 'Login' })
-// @ApiCreatedResponse({ description: 'User logged in' })
-// @ApiBadRequestResponse({ description: 'Invalid input' })
-// async login(
-//   @Body() createUserDto: CreateUserDto,
-// ): Promise<User> {
-//   if(!createUserDto.email || !createUserDto.password) {
-//     throw new Error('Invalid input');
-//   }
-//   const user = await this.usersService.validateUser(String(createUserDto.email), String(createUserDto.password));
-//   if (!user) {
-//     throw new Error('Invalid credentials');
-//   }
-//   return user;
 
-// }
-
-
+//find patient by id
+  @Get('patient/:id')
+  @ApiOperation({ summary: 'Get patient by user ID' })
+  @ApiOkResponse({ description: 'Patient found' })
+  @ApiNotFoundResponse({ description: 'Patient not found' })
+  async getPatientByUserId(@Param('id') id: number) {
+    return this.usersService.findPatientByUserId(id);
+  }
 
 }

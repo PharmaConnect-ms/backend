@@ -17,7 +17,7 @@ export class User {
   @Exclude({ toPlainOnly: true })
   password: string; 
 
-  @Column({ default: 'patient' }) 
+  @Column({ default: 'user' }) 
   @Expose()
   role: string;
 

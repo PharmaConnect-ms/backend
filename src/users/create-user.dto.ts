@@ -18,7 +18,7 @@ email: string;
 @ApiProperty({ description: 'User password', example: 'P@ssw0rd' })
 @IsString()
 @Length(8, 100)
-password: any;
+password: string|null;
 
 @ApiProperty({ description: 'User role', example: 'admin' })
 @IsString()
@@ -30,7 +30,7 @@ role?: string;
 @IsString()
 @IsOptional()
 @Matches(/^(google|local)$/, { message: 'Provider must be either "google" or "local"' })
-provider?: string;
+provider?: 'google' | 'local';
 
 
 }

@@ -4,6 +4,7 @@ import { Repository } from 'typeorm';
 import * as bcrypt from 'bcryptjs';
 import { User } from './user.entity';
 import { CreateUserDto } from './create-user.dto';
+import { UserResponseDto, filterUserResponse } from './dto/user-response.dto';
 
 @Injectable()
 export class UsersService {
@@ -27,9 +28,12 @@ export class UsersService {
       const user = this.usersRepository.create({ username, email, role, provider });
       return this.usersRepository.save(user);
     } else {
+      if (!password) {
+        throw new BadRequestException('Password is required for local users');
+      }
       const hashedPassword = await bcrypt.hash(password, 10);
       const existingUser = await this.usersRepository.findOne({
-        where: [{ username }, { email } ],
+        where: [{ username }, { email }],
       });
 
       if (existingUser) {
@@ -47,20 +51,24 @@ export class UsersService {
 
       return this.usersRepository.save(user);
     }
-
-    //const user = this.usersRepository.create({ username, password: hashedPassword, role });
-    //return this.usersRepository.save(user);
   }
 
   async findByUsername(username: string) {
     return this.usersRepository.findOne({ where: { username } });
   }
 
-  async findById(id: number) {
-    return this.usersRepository.findOne({ where: { id } });
+  async findById(id: number): Promise<UserResponseDto> {
+    if (!id) {
+      throw new BadRequestException('Invalid user ID');
+    }
+    const entity = await this.usersRepository.findOne({ where: { id } });
+    if (!entity) {
+      throw new BadRequestException('User not found');
+    }
+    return filterUserResponse(entity);
   }
 
-  async findall() {
+  async findAll() {
     return this.usersRepository.find();
   }
 
@@ -76,5 +84,15 @@ export class UsersService {
     if (!isPasswordValid) return null;
 
     return user;
+  }
+
+  async findPatientByUserId(id: number): Promise<UserResponseDto> {
+    const patient = await this.usersRepository.findOne({
+      where: { id, role: 'patient' },
+    });
+    if (!patient) {
+      throw new BadRequestException('Patient not found');
+    }
+    return filterUserResponse(patient);
   }
 }

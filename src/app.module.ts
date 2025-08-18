@@ -11,6 +11,7 @@ import { Appointment } from './appointment/entities/appointment.entity';
 import { PrescriptionModule } from './prescription/prescription.module';
 import { MeetingModule } from './meeting/meeting.module';
 import { AppointmentModule } from './appointment/appointment.module';
+import { OpenAIModule } from './openai/openai.module';
 
 @Module({
   imports: [
@@ -30,6 +31,7 @@ import { AppointmentModule } from './appointment/appointment.module';
     PrescriptionModule,
     MeetingModule,
     AppointmentModule,
+    OpenAIModule,
   ],
 })
 export class AppModule {}

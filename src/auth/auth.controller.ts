@@ -1,17 +1,9 @@
 import { Controller, Post, Body, Get, Req, UseGuards } from '@nestjs/common';
 import { AuthService } from './auth.service';
-import { JwtAuthGuard } from './jwt-auth.guard';
 import { AuthGuard } from '@nestjs/passport';
-import { ApiTags, ApiBody, ApiResponse, ApiProperty } from '@nestjs/swagger';
-
-class LoginDto {
-  @ApiProperty({ example: 'user@example.com', description: 'Username or email' })
-  usernameOrEmail: string;
-
-  @ApiProperty({ example: 'P@ssw0rd', description: 'User password' })
-  password: string;
-}
-
+import { ApiTags, ApiBody, ApiResponse } from '@nestjs/swagger';
+import { AuthResponseDto } from './dto/google.dto';
+import { LoginDto } from './dto/login.dto';
 @ApiTags('auth') 
 @Controller('auth')
 export class AuthController {
@@ -29,25 +21,17 @@ export class AuthController {
   @Get('google')
   @UseGuards(AuthGuard('google'))
   @ApiResponse({ status: 302, description: 'Redirecting to Google login' })
-  async googleAuth() {
+  googleAuth() {
     return { message: 'Redirecting to Google login' };
   }
 
-  // @Get('google/callback')
-  // @UseGuards(AuthGuard('google'))
-  // @ApiResponse({ status: 200, description: 'User details after Google authentication' })
-  // googleAuthRedirect(@Req() req) {
-  //   return req.user;
-  // }
 
-  @Get('google/callback')
+@Get('google/callback')
 @UseGuards(AuthGuard('google'))
 @ApiResponse({ status: 200, description: 'User details after Google authentication' })
-async googleAuthRedirect(@Req() req) {
+async googleAuthRedirect(@Req() req: AuthResponseDto) {
   const user = req.user;
-  //console.log(user._json);
-  // Generate JWT Token
-  const token = await this.authService.validateGoogleUser(req.user._json);
+  const token = await this.authService.validateGoogleUser(req.user);
   return {
     message: 'Authentication successful',
     user,
