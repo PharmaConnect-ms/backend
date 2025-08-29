@@ -2,6 +2,7 @@ import {
   Controller,
   Post,
   Get,
+  Put,
   Param,
   Body,
   ParseIntPipe,
@@ -9,6 +10,7 @@ import {
 import { AppointmentService } from './appointment.service';
 import { CreateAppointmentDto } from './dto/create-appointment.dto';
 import { AppointmentResponseDto } from './dto/appointment-response.dto';
+import { UpdateAppointmentStatusDto } from './dto/update-appointment-status.dto';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 
 @ApiTags('Appointments')
@@ -17,7 +19,7 @@ export class AppointmentController {
   constructor(private readonly appointmentService: AppointmentService) {}
 
   @Post()
-  @ApiOperation({ summary: 'Create a new appointment' })
+  @ApiOperation({ summary: 'Book an appointment for a time slot' })
   @ApiResponse({
     status: 201,
     description: 'Appointment created successfully',
@@ -48,5 +50,13 @@ export class AppointmentController {
     return this.appointmentService.findByUser(userId);
   }
 
-
+  @Put(':id/status')
+  @ApiOperation({ summary: 'Update appointment status (for doctors to mark as completed, etc.)' })
+  @ApiResponse({ status: 200, type: AppointmentResponseDto })
+  updateStatus(
+    @Param('id') id: string,
+    @Body() updateStatusDto: UpdateAppointmentStatusDto
+  ): Promise<AppointmentResponseDto> {
+    return this.appointmentService.updateStatus(id, updateStatusDto.status);
+  }
 }

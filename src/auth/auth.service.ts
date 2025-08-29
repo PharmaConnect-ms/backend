@@ -47,6 +47,9 @@ export class AuthService {
       username: user.username,
       email: user.email,
       role: user.role,
+      age: user.age,
+      phone: user.phone,
+      address: user.address,
     };
 
     return { ...payload, token };

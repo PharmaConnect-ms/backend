@@ -25,4 +25,7 @@ export class UserDto {
   @Expose()
   password:string;
 
+  @Expose()
+  age: string;
+
 }

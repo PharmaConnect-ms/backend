@@ -8,9 +8,14 @@ import { User } from './users/user.entity';
 import { Prescription } from './prescription/entities/prescription.entity';
 import { Meeting } from './meeting/entities/meeting.entity';
 import { Appointment } from './appointment/entities/appointment.entity';
+import { DoctorSchedule } from './appointment/entities/doctor-schedule.entity';
+import { TimeSlot } from './appointment/entities/time-slot.entity';
+import { Notification } from './notification/entities/notification.entity';
+import { FiredNotification } from './notification/entities/fired-notification.entity';
 import { PrescriptionModule } from './prescription/prescription.module';
 import { MeetingModule } from './meeting/meeting.module';
 import { AppointmentModule } from './appointment/appointment.module';
+import { NotificationModule } from './notification/notification.module';
 import { OpenAIModule } from './openai/openai.module';
 import { ImageUploadsModule } from './image-uploads/image-uploads.module';
 import { ConditionBookModule } from './condition-book/condition-book.module';
@@ -27,7 +32,7 @@ import { FollowUpModule } from './follow-up/follow-up.module';
       username: process.env.DATABASE_USER,
       password: process.env.DATABASE_PASSWORD,
       database: process.env.DATABASE_NAME,
-      entities: [User , Prescription , Meeting , Appointment],
+      entities: [User, Prescription, Meeting, Appointment, DoctorSchedule, TimeSlot, Notification, FiredNotification],
       synchronize: true, // Set to false in production
     }),
     UsersModule,
@@ -35,6 +40,7 @@ import { FollowUpModule } from './follow-up/follow-up.module';
     PrescriptionModule,
     MeetingModule,
     AppointmentModule,
+    NotificationModule,
     OpenAIModule,
     ImageUploadsModule,
     ConditionBookModule,

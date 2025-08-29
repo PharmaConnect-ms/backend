@@ -1,21 +1,22 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsEnum, IsDateString, IsNumber } from 'class-validator';
+import { IsEnum, IsNumber, IsString, IsOptional } from 'class-validator';
 import { AppointmentType } from '../entities/appointment.entity';
 
 export class CreateAppointmentDto {
-  @ApiProperty()
-  @IsNumber()
-  doctorId: number;
+  @ApiProperty({ description: 'Time slot ID to book' })
+  @IsString()
+  timeSlotId: string;
 
-  @ApiProperty()
+  @ApiProperty({ description: 'Patient ID who is booking the appointment' })
   @IsNumber()
   patientId: number;
 
-  @ApiProperty({ enum: AppointmentType })
+  @ApiProperty({ enum: AppointmentType, description: 'Type of appointment' })
   @IsEnum(AppointmentType)
   type: AppointmentType;
 
-  @ApiProperty()
-  @IsDateString()
-  scheduledAt: string;
+  @ApiProperty({ description: 'Optional notes for the appointment', required: false })
+  @IsOptional()
+  @IsString()
+  notes?: string;
 }

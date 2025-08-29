@@ -1,19 +1,18 @@
 import {
   Injectable,
   NotFoundException,
+  BadRequestException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { Appointment, AppointmentType } from './entities/appointment.entity';
+import { Repository, Between } from 'typeorm';
+import { Appointment, AppointmentType, AppointmentStatus } from './entities/appointment.entity';
 import { CreateAppointmentDto } from './dto/create-appointment.dto';
 import { AppointmentResponseDto } from './dto/appointment-response.dto';
 import { User } from '@/users/user.entity';
 import { Meeting } from '@/meeting/entities/meeting.entity';
+import { TimeSlot } from './entities/time-slot.entity';
+import { TimeSlotStatus } from './types';
 import { v4 as uuid } from 'uuid';
-import { Between } from 'typeorm';
-import { BadRequestException } from '@nestjs/common';
-
-
 
 @Injectable()
 export class AppointmentService {
@@ -26,6 +25,9 @@ export class AppointmentService {
 
     @InjectRepository(Meeting)
     private readonly meetingRepo: Repository<Meeting>,
+
+    @InjectRepository(TimeSlot)
+    private readonly timeSlotRepo: Repository<TimeSlot>,
   ) {}
 
   private toResponseDto(appointment: Appointment): AppointmentResponseDto {
@@ -34,6 +36,7 @@ export class AppointmentService {
       type: appointment.type,
       scheduledAt: appointment.scheduledAt,
       status: appointment.status,
+      appointmentNo: appointment.appointmentNo,
       createdAt: appointment.createdAt,
       doctor: {
         id: appointment.doctor.id,
@@ -43,73 +46,89 @@ export class AppointmentService {
         id: appointment.patient.id,
         username: appointment.patient.username,
       },
+      timeSlot: {
+        id: appointment.timeSlot.id,
+        date: appointment.timeSlot.date,
+        startTime: appointment.timeSlot.startTime,
+        endTime: appointment.timeSlot.endTime,
+        status: appointment.timeSlot.status,
+      },
       meetingLink: appointment.meeting?.roomLink,
-      appointmentNo: appointment.appointmentNo,
+      notes: appointment.notes,
     };
   }
 
-  async create(dto: CreateAppointmentDto): Promise<AppointmentResponseDto> {
-    const doctor = await this.userRepo.findOne({ where: { id: dto.doctorId } });
-    if (!doctor) throw new NotFoundException('Doctor not found');
-  
-    const patient = await this.userRepo.findOne({ where: { id: dto.patientId } });
-    if (!patient) throw new NotFoundException('Patient not found');
-  
-    // Determine the base date (ignore the time from dto.scheduledAt)
-    const baseDate = new Date(dto.scheduledAt);
-    baseDate.setHours(0, 0, 0, 0);
-  
-    const startOfDay = new Date(baseDate);
-    const endOfDay = new Date(baseDate);
-    endOfDay.setHours(23, 59, 59, 999);
-  
-    // Get existing appointments for the doctor on that day
-    const appointmentsToday = await this.appointmentRepo.find({
-      where: {
-        doctor: { id: doctor.id },
-        scheduledAt: Between(startOfDay, endOfDay),
-      },
-      order: { scheduledAt: 'ASC' }, // Ensure consistent ordering
+  async create(createDto: CreateAppointmentDto): Promise<AppointmentResponseDto> {
+    // Find the time slot and verify it's available
+    const timeSlot = await this.timeSlotRepo.findOne({
+      where: { id: createDto.timeSlotId },
+      relations: ['doctorSchedule', 'doctorSchedule.doctor'],
     });
-  
-    if (appointmentsToday.length >= 10) {
-      throw new BadRequestException('Doctor is fully booked for this day.');
+
+    if (!timeSlot) {
+      throw new NotFoundException('Time slot not found');
     }
-  
-    const appointmentNo = appointmentsToday.length + 1;
-  
-    // Calculate slot time based on index
-    const scheduledAt = new Date(baseDate);
-    scheduledAt.setHours(19, 0, 0, 0); // 7:00 PM start
-    scheduledAt.setMinutes(scheduledAt.getMinutes() + (appointmentNo - 1) * 10); // +10 min per slot
-  
-    const appointment = this.appointmentRepo.create({
-      doctor,
-      patient,
-      scheduledAt,
-      type: dto.type,
-      status: 'pending',
-      appointmentNo,
+
+    if (timeSlot.status !== TimeSlotStatus.AVAILABLE) {
+      throw new BadRequestException('Time slot is not available');
+    }
+
+    // Verify patient exists
+    const patient = await this.userRepo.findOne({
+      where: { id: createDto.patientId },
     });
-  
-    const saved = await this.appointmentRepo.save(appointment);
-  
-    if (dto.type === AppointmentType.ONLINE) {
+
+    if (!patient) {
+      throw new NotFoundException('Patient not found');
+    }
+
+    // Generate appointment number (sequential for the day per doctor)
+    const appointmentDate = new Date(timeSlot.date);
+    const appointmentNo = await this.generateAppointmentNumber(
+      timeSlot.doctorSchedule.doctor.id,
+      appointmentDate
+    );
+
+    // Create scheduled date/time from slot date and time
+    const scheduledAt = this.createScheduledDateTime(timeSlot.date, timeSlot.startTime);
+
+    // Create the appointment
+    const appointment = this.appointmentRepo.create({
+      doctor: timeSlot.doctorSchedule.doctor,
+      patient,
+      timeSlot,
+      type: createDto.type,
+      scheduledAt,
+      status: AppointmentStatus.SCHEDULED,
+      appointmentNo,
+      notes: createDto.notes,
+    });
+
+    // If it's an online appointment, create a Jitsi meeting
+    if (createDto.type === AppointmentType.ONLINE) {
+      const roomLink = this.generateJitsiMeetingLink(appointment.id);
       const meeting = this.meetingRepo.create({
-        appointment: saved,
-        roomLink: `https://meet.jit.si/pharmaconnect-${uuid()}`,
+        roomLink,
+        status: 'scheduled',
         meetingId: uuid(),
       });
       await this.meetingRepo.save(meeting);
-      saved.meeting = meeting;
+      appointment.meeting = meeting;
     }
-  
-    return this.toResponseDto(saved);
+
+    // Save appointment
+    const savedAppointment = await this.appointmentRepo.save(appointment);
+
+    // Update time slot status to booked
+    timeSlot.status = TimeSlotStatus.BOOKED;
+    await this.timeSlotRepo.save(timeSlot);
+
+    return this.toResponseDto(savedAppointment);
   }
 
   async findAll(): Promise<AppointmentResponseDto[]> {
     const appointments = await this.appointmentRepo.find({
-      relations: ['doctor', 'patient', 'meeting'],
+      relations: ['doctor', 'patient', 'meeting', 'timeSlot'],
       order: { scheduledAt: 'DESC' },
     });
 
@@ -119,10 +138,13 @@ export class AppointmentService {
   async findOne(id: string): Promise<AppointmentResponseDto> {
     const appointment = await this.appointmentRepo.findOne({
       where: { id },
-      relations: ['doctor', 'patient', 'meeting'],
+      relations: ['doctor', 'patient', 'meeting', 'timeSlot'],
     });
 
-    if (!appointment) throw new NotFoundException(`Appointment not found`);
+    if (!appointment) {
+      throw new NotFoundException('Appointment not found');
+    }
+    
     return this.toResponseDto(appointment);
   }
 
@@ -132,10 +154,66 @@ export class AppointmentService {
         { doctor: { id: userId } },
         { patient: { id: userId } },
       ],
-      relations: ['doctor', 'patient', 'meeting'],
+      relations: ['doctor', 'patient', 'meeting', 'timeSlot'],
       order: { scheduledAt: 'DESC' },
     });
 
     return appointments.map(a => this.toResponseDto(a));
+  }
+
+  async updateStatus(appointmentId: string, status: AppointmentStatus): Promise<AppointmentResponseDto> {
+    const appointment = await this.appointmentRepo.findOne({
+      where: { id: appointmentId },
+      relations: ['doctor', 'patient', 'meeting', 'timeSlot'],
+    });
+
+    if (!appointment) {
+      throw new NotFoundException('Appointment not found');
+    }
+
+    // Update appointment status
+    appointment.status = status;
+    
+    // Update corresponding time slot status
+    if (status === AppointmentStatus.COMPLETED) {
+      appointment.timeSlot.status = TimeSlotStatus.COMPLETED;
+    } else if (status === AppointmentStatus.CANCELLED) {
+      appointment.timeSlot.status = TimeSlotStatus.CANCELLED;
+    } else if (status === AppointmentStatus.NO_SHOW) {
+      appointment.timeSlot.status = TimeSlotStatus.NO_SHOW;
+    }
+
+    await this.appointmentRepo.save(appointment);
+    await this.timeSlotRepo.save(appointment.timeSlot);
+
+    return this.toResponseDto(appointment);
+  }
+
+  private async generateAppointmentNumber(doctorId: number, date: Date): Promise<number> {
+    const startOfDay = new Date(date);
+    startOfDay.setHours(0, 0, 0, 0);
+    
+    const endOfDay = new Date(date);
+    endOfDay.setHours(23, 59, 59, 999);
+
+    const appointmentsToday = await this.appointmentRepo.count({
+      where: {
+        doctor: { id: doctorId },
+        scheduledAt: Between(startOfDay, endOfDay),
+      },
+    });
+
+    return appointmentsToday + 1;
+  }
+
+  private createScheduledDateTime(date: Date, time: string): Date {
+    const [hours, minutes] = time.split(':').map(Number);
+    const scheduledAt = new Date(date);
+    scheduledAt.setHours(hours, minutes, 0, 0);
+    return scheduledAt;
+  }
+
+  private generateJitsiMeetingLink(appointmentId: string): string {
+    return `https://meet.jit.si/pharmaconnect-${appointmentId}`;
   }
 }

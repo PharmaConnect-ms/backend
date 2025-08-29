@@ -12,6 +12,7 @@ import { UsersService } from '@/users/users.service';
 import { ImageUploadsService } from '@/image-uploads/image-uploads.service';
 import { ImageUploadResponseDto } from '@/image-uploads/dto/image-upload-response.dto';
 import { OpenAIService } from '@/openai/openai.service';
+import { NotificationService } from '@/notification/notification.service';
 
 @Injectable()
 export class PrescriptionService {
@@ -21,10 +22,11 @@ export class PrescriptionService {
 
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
-    
+
     private readonly openAIService: OpenAIService,
     private readonly usersService: UsersService,
     private readonly imageUploadsService: ImageUploadsService,
+    private readonly notificationService: NotificationService,
   ) {}
 
   private toResponseDto(prescription: Prescription): PrescriptionResponseDto {
@@ -87,7 +89,7 @@ export class PrescriptionService {
   }
 
   async findByUser(userId: number): Promise<PrescriptionResponseDto[]> {
-    const result =  await this.prescriptionRepository.find({
+    const result = await this.prescriptionRepository.find({
       where: [{ patient: { id: userId } }],
       relations: ['doctor', 'patient'],
       order: { createdAt: 'DESC' },
@@ -119,17 +121,25 @@ export class PrescriptionService {
     return `This action removes a #${id} prescription`;
   }
 
-  async addPrescription(
-    file: Express.Multer.File,
-    patientName: string,
-    doctorId: number,
-    patientId: number
-  ){
+  async addPrescription(file: Express.Multer.File, patientName: string, doctorId: number, patientId: number) {
     const summary = await this.openAIService.summarizePatientImage(file);
-    if (summary) await this.usersService.updateUserSummary(patientId, summary);
+    if (summary) {
+      await this.usersService.updateUserSummary(patientId, summary);
+      const reminders = await this.openAIService.extractRemindersFromSummary(summary);
+      // Create notification entries
+      for (const r of reminders) {
+        await this.notificationService.create({
+          title: r.title,
+          description: r.description,
+          reminderTime: r.reminderTime,
+          type: r.type,
+          userId: patientId,
+        });
+      }
+    }
     const upload: ImageUploadResponseDto = await this.imageUploadsService.imageUpload(file);
     const imageURL = getImageUrl(upload.file.name);
-    const results =  await this.create({
+    const results = await this.create({
       patientName,
       doctorId,
       patientId,

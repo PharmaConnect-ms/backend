@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { AppointmentType } from '../entities/appointment.entity';
+import { AppointmentType, AppointmentStatus } from '../entities/appointment.entity';
 import { UserSummaryDto } from '@/common/dto/user-summary.dto';
 
 export class AppointmentResponseDto {
@@ -12,8 +12,8 @@ export class AppointmentResponseDto {
   @ApiProperty()
   scheduledAt: Date;
 
-  @ApiProperty()
-  status: string;
+  @ApiProperty({ enum: AppointmentStatus })
+  status: AppointmentStatus;
 
   @ApiProperty()
   createdAt: Date;
@@ -27,6 +27,18 @@ export class AppointmentResponseDto {
   @ApiProperty({ type: UserSummaryDto })
   patient: UserSummaryDto;
 
+  @ApiProperty()
+  timeSlot: {
+    id: string;
+    date: Date;
+    startTime: string;
+    endTime: string;
+    status: string;
+  };
+
   @ApiProperty({ required: false })
   meetingLink?: string;
+
+  @ApiProperty({ required: false })
+  notes?: string;
 }

@@ -1,5 +1,6 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
 import OpenAI from 'openai';
+import { ReminderInterface } from './interface/reminder-interface';
 
 // Vision model constant
 const MODEL_VISION = 'gpt-4o-mini';
@@ -11,21 +12,24 @@ export class OpenAIService {
   });
 
   async summarizePatientText(text: string) {
-    const res = await this.client.chat.completions.create({
-      model: 'gpt-4o-mini',
-      messages: [
-        {
-          role: 'system',
-          content: 'You are a clinical note summarizer. Return concise bullet points: diagnoses, meds (name/strength/frequency), allergies, tests, follow-ups. If unknown, say "Not documented". Do not invent info.'
-        },
-        {
-          role: 'user',
-          content: text
-        }
-      ],
-    }, {
-      timeout: Number(process.env.OPENAI_TIMEOUT_MS) || 20000,
-    });
+    const res = await this.client.chat.completions.create(
+      {
+        model: 'gpt-4o-mini',
+        messages: [
+          {
+            role: 'system',
+            content: 'You are a clinical note summarizer. Return concise bullet points: diagnoses, meds (name/strength/frequency), allergies, tests, follow-ups. If unknown, say "Not documented". Do not invent info.',
+          },
+          {
+            role: 'user',
+            content: text,
+          },
+        ],
+      },
+      {
+        timeout: Number(process.env.OPENAI_TIMEOUT_MS) || 20000,
+      },
+    );
     return res.choices[0].message.content;
   }
 
@@ -37,9 +41,7 @@ export class OpenAIService {
     return res.choices[0].message.content;
   }
 
-  
-
-   // ---------- helpers for images ----------
+  // ---------- helpers for images ----------
   private toBase64DataUri(file: Express.Multer.File): { data: string; mime: string } {
     if (!file || !file.buffer || !file.buffer.length) {
       throw new BadRequestException('Empty or invalid image file');
@@ -55,34 +57,33 @@ export class OpenAIService {
   async summarizePatientImage(file: Express.Multer.File, note?: string) {
     const { data } = this.toBase64DataUri(file);
 
-    const systemInstruction =
-      'You are a clinical note summarizer. Return concise bullet points under these headings: ' +
-      'Diagnoses, Medications (name/strength/frequency), Allergies, Tests/Results, Follow-ups/Advice. ' +
-      'If unknown, write "-". Do not invent info. If handwriting is unclear, state "Illegible".';
+    const systemInstruction = 'You are a clinical note summarizer. Return concise bullet points under these headings: ' + 'Diagnoses, Medications (name/strength/frequency), Allergies, Tests/Results, Follow-ups/Advice. ' + 'If unknown, write "-". Do not invent info. If handwriting is unclear, state "Illegible".';
 
-    const userText = (note?.trim() ? `Context/Note: ${note.trim()}\n` : '') + 
-      'Extract and summarize the clinical information from this image.';
+    const userText = (note?.trim() ? `Context/Note: ${note.trim()}\n` : '') + 'Extract and summarize the clinical information from this image.';
 
-    const res = await this.client.chat.completions.create({
-      model: MODEL_VISION,
-      messages: [
-        {
-          role: 'system',
-          content: systemInstruction,
-        },
-        {
-          role: 'user',
-          content: [
-            { type: 'text', text: userText },
-            { type: 'image_url', image_url: { url: data } },
-          ],
-        },
-      ],
-      max_tokens: 500,
-      temperature: 0.2,
-    }, {
-      timeout: Number(process.env.OPENAI_TIMEOUT_MS) || 20000,
-    });
+    const res = await this.client.chat.completions.create(
+      {
+        model: MODEL_VISION,
+        messages: [
+          {
+            role: 'system',
+            content: systemInstruction,
+          },
+          {
+            role: 'user',
+            content: [
+              { type: 'text', text: userText },
+              { type: 'image_url', image_url: { url: data } },
+            ],
+          },
+        ],
+        max_tokens: 500,
+        temperature: 0.2,
+      },
+      {
+        timeout: Number(process.env.OPENAI_TIMEOUT_MS) || 20000,
+      },
+    );
 
     return res.choices[0].message.content;
   }
@@ -99,8 +100,7 @@ export class OpenAIService {
       messages: [
         {
           role: 'system',
-          content:
-            'You are a careful medical assistant. If clinical claims are unclear, ask for clarification or say they are not legible. Avoid fabrication.',
+          content: 'You are a careful medical assistant. If clinical claims are unclear, ask for clarification or say they are not legible. Avoid fabrication.',
         },
         {
           role: 'user',
@@ -118,5 +118,34 @@ export class OpenAIService {
     return res.choices[0].message.content;
   }
 
+  async extractRemindersFromSummary(summary: string) {
+    const res = await this.client.chat.completions.create({
+      model: 'gpt-4o-mini',
+      messages: [
+        {
+          role: 'system',
+          content: `You are a medical reminder extractor.
+Return JSON array of reminders with fields:
+- type: ("medication_reminder" | "appointment_reminder" | "follow_up_reminder" | "general_reminder")
+- title: short label
+- description: optional details
+- reminderTime: ISO datetime (if frequency, give first next time)
+If nothing relevant, return [].`,
+        },
+        { role: 'user', content: summary },
+      ],
+      response_format: { type: 'json_object' },
+    });
 
+    try {
+      const content = res.choices[0].message.content;
+      if (typeof content !== 'string') {
+        return [];
+      }
+      const parsed = JSON.parse(content) as { reminders?: ReminderInterface[] };
+      return Array.isArray(parsed.reminders) ? parsed.reminders : [];
+    } catch {
+      return [];
+    }
+  }
 }

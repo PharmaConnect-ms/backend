@@ -41,6 +41,14 @@ export class User {
   @Expose()
   userSummary: string;
 
+  @Column({ nullable: true })
+  @Expose()
+  profilePicture: string;
+
+  @Column({ nullable: true })
+  @Expose()
+  age: string;
+
   // Prescriptions issued by the doctor
   @OneToMany(() => Prescription, prescription => prescription.doctor)
   @Expose()
