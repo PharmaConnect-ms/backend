@@ -5,9 +5,13 @@ import { Prescription } from './entities/prescription.entity';
 import { CreatePrescriptionDto } from './dto/create-prescription.dto';
 import { UpdatePrescriptionDto } from './dto/update-prescription.dto';
 import { PrescriptionResponseDto } from './dto/prescription-response.dto';
-import { UserSummaryDto } from '@/prescription/dto/user-summary.dto';
 
 import { User } from '@/users/user.entity';
+import { getImageUrl } from '@/common/const';
+import { UsersService } from '@/users/users.service';
+import { ImageUploadsService } from '@/image-uploads/image-uploads.service';
+import { ImageUploadResponseDto } from '@/image-uploads/dto/image-upload-response.dto';
+import { OpenAIService } from '@/openai/openai.service';
 
 @Injectable()
 export class PrescriptionService {
@@ -17,6 +21,10 @@ export class PrescriptionService {
 
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
+    
+    private readonly openAIService: OpenAIService,
+    private readonly usersService: UsersService,
+    private readonly imageUploadsService: ImageUploadsService,
   ) {}
 
   private toResponseDto(prescription: Prescription): PrescriptionResponseDto {
@@ -104,9 +112,30 @@ export class PrescriptionService {
 
   update(id: number, updatePrescriptionDto: UpdatePrescriptionDto) {
     return `This action updates a #${id} prescription`;
+    console.log(updatePrescriptionDto);
   }
 
   remove(id: number) {
     return `This action removes a #${id} prescription`;
+  }
+
+  async addPrescription(
+    file: Express.Multer.File,
+    patientName: string,
+    doctorId: number,
+    patientId: number
+  ){
+    const summary = await this.openAIService.summarizePatientImage(file);
+    if (summary) await this.usersService.updateUserSummary(patientId, summary);
+    const upload: ImageUploadResponseDto = await this.imageUploadsService.imageUpload(file);
+    const imageURL = getImageUrl(upload.file.name);
+    const results =  await this.create({
+      patientName,
+      doctorId,
+      patientId,
+      prescriptionImage: imageURL,
+    });
+
+    return results;
   }
 }

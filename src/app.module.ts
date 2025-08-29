@@ -12,6 +12,10 @@ import { PrescriptionModule } from './prescription/prescription.module';
 import { MeetingModule } from './meeting/meeting.module';
 import { AppointmentModule } from './appointment/appointment.module';
 import { OpenAIModule } from './openai/openai.module';
+import { ImageUploadsModule } from './image-uploads/image-uploads.module';
+import { ConditionBookModule } from './condition-book/condition-book.module';
+import { BookEntryModule } from './book-entry/book-entry.module';
+import { FollowUpModule } from './follow-up/follow-up.module';
 
 @Module({
   imports: [
@@ -32,6 +36,10 @@ import { OpenAIModule } from './openai/openai.module';
     MeetingModule,
     AppointmentModule,
     OpenAIModule,
+    ImageUploadsModule,
+    ConditionBookModule,
+    BookEntryModule,
+    FollowUpModule,
   ],
 })
 export class AppModule {}

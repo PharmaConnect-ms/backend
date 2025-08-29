@@ -1,13 +1,15 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
+import { Controller, Get, Post, Body, Patch, Param, Delete, BadRequestException, UploadedFile, UseInterceptors } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiResponse, ApiConsumes, ApiBody } from '@nestjs/swagger';
 import { PrescriptionService } from './prescription.service';
 import { CreatePrescriptionDto } from './dto/create-prescription.dto';
 import { UpdatePrescriptionDto } from './dto/update-prescription.dto';
-
-@ApiTags('Prescriptions') // Swagger group
+import { FileInterceptor } from '@nestjs/platform-express/multer/interceptors/file.interceptor';
+@ApiTags('Prescriptions')
 @Controller('prescription')
 export class PrescriptionController {
-  constructor(private readonly prescriptionService: PrescriptionService) {}
+  constructor(
+    private readonly prescriptionService: PrescriptionService,
+  ) {}
 
   @Post()
   @ApiOperation({ summary: 'Create a new prescription' })
@@ -50,5 +52,41 @@ export class PrescriptionController {
   @ApiOperation({ summary: 'Delete a prescription by ID' })
   remove(@Param('id') id: string) {
     return this.prescriptionService.remove(+id);
+  }
+
+  @Post('add-prescription')
+  @ApiOperation({ summary: 'Upload an image for processing' })
+  @ApiConsumes('multipart/form-data')
+  @UseInterceptors(
+    FileInterceptor('file', {
+      limits: { fileSize: 10 * 1024 * 1024 },
+      fileFilter: (_req, file, cb) => {
+        const ok = /image\/(png|jpeg|jpg|webp|heic|heif|gif|bmp|tiff)/i.test(file.mimetype);
+        cb(ok ? null : new BadRequestException('Unsupported image type'), ok);
+      },
+    }),
+  )
+  @ApiBody({
+    schema: {
+      type: 'object',
+      required: ['file'],
+      properties: {
+        file: { type: 'string', format: 'binary' },
+        patientName: { type: 'string' },
+        doctorId: { type: 'number' },
+        patientId: { type: 'number' },
+      },
+    },
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Successful image upload',
+    schema: { example: { answer: { message: '...', file: { name: '...', url: '...' } } } },
+  })
+  async addPrescription(@UploadedFile() file: Express.Multer.File, @Body('patientName') patientName: string, @Body('doctorId') doctorId: number, @Body('patientId') patientId: number) {
+    if (!file) throw new BadRequestException('Image file is required');
+    const results =  await this.prescriptionService.addPrescription(file, patientName, doctorId, patientId);
+
+    return { message: 'Prescription added successfully', data: results };
   }
 }

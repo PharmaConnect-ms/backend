@@ -95,4 +95,15 @@ export class UsersService {
     }
     return filterUserResponse(patient);
   }
+
+  //update user summary
+  async updateUserSummary(id: number, summary: string): Promise<UserResponseDto> {
+    const user = await this.usersRepository.findOne({ where: { id } });
+    if (!user) {
+      throw new BadRequestException('User not found');
+    }
+    user.userSummary = summary;
+    await this.usersRepository.save(user);
+    return filterUserResponse(user);
+  }
 }
