@@ -49,7 +49,6 @@ export class AuthService {
       role: user.role,
       age: user.age,
       phone: user.phone,
-      address: user.address,
     };
 
     return { ...payload, token };

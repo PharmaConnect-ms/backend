@@ -1,4 +1,4 @@
-import { Controller, Post, Body, Get, Param, UseGuards } from '@nestjs/common';
+import { Controller, Post, Body, Get, Param, UseGuards, Put } from '@nestjs/common';
 import { UsersService } from './users.service';
 import {
   ApiBadRequestResponse,
@@ -11,6 +11,7 @@ import {
 } from '@nestjs/swagger';
 import { JwtAuthGuard } from 'src/auth/jwt-auth.guard';
 import { CreateUserDto } from './create-user.dto';
+import { UpdateUserDto } from './dto/update-user.dto';
 import { User } from './user.entity';
 
 
@@ -62,13 +63,28 @@ export class UsersController {
   }
 
 
-//find patient by id
+  //find patient by id
   @Get('patient/:id')
   @ApiOperation({ summary: 'Get patient by user ID' })
   @ApiOkResponse({ description: 'Patient found' })
   @ApiNotFoundResponse({ description: 'Patient not found' })
   async getPatientByUserId(@Param('id') id: number) {
     return this.usersService.findPatientByUserId(id);
+  }
+
+  // Update user details
+  @Put(':id')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Update user details' })
+  @ApiOkResponse({ description: 'User updated successfully' })
+  @ApiNotFoundResponse({ description: 'User not found' })
+  @ApiBadRequestResponse({ description: 'Invalid input or email/username already exists' })
+  async updateUser(
+    @Param('id') id: number,
+    @Body() updateUserDto: UpdateUserDto,
+  ) {
+    return this.usersService.updateUser(id, updateUserDto);
   }
 
 }

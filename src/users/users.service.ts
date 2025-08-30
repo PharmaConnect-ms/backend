@@ -4,6 +4,7 @@ import { Repository } from 'typeorm';
 import * as bcrypt from 'bcryptjs';
 import { User } from './user.entity';
 import { CreateUserDto } from './create-user.dto';
+import { UpdateUserDto } from './dto/update-user.dto';
 import { UserResponseDto, filterUserResponse } from './dto/user-response.dto';
 
 @Injectable()
@@ -105,5 +106,40 @@ export class UsersService {
     user.userSummary = summary;
     await this.usersRepository.save(user);
     return filterUserResponse(user);
+  }
+
+  // Update user details
+  async updateUser(id: number, updateUserDto: UpdateUserDto): Promise<UserResponseDto> {
+    const user = await this.usersRepository.findOne({ where: { id } });
+    if (!user) {
+      throw new BadRequestException('User not found');
+    }
+    
+
+    // Check if email is being updated and if it's unique
+    if (updateUserDto.email && updateUserDto.email !== user.email) {
+      const existingUser = await this.usersRepository.findOne({ 
+        where: { email: updateUserDto.email } 
+      });
+      if (existingUser) {
+        throw new BadRequestException('Email already exists');
+      }
+    }
+
+    // Check if username is being updated and if it's unique
+    if (updateUserDto.username && updateUserDto.username !== user.username) {
+      const existingUser = await this.usersRepository.findOne({ 
+        where: { username: updateUserDto.username } 
+      });
+      if (existingUser) {
+        throw new BadRequestException('Username already exists');
+      }
+    }
+
+    // Update user properties
+    Object.assign(user, updateUserDto);
+    
+    const updatedUser = await this.usersRepository.save(user);
+    return filterUserResponse(updatedUser);
   }
 }
