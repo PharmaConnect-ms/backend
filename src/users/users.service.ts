@@ -142,4 +142,9 @@ export class UsersService {
     const updatedUser = await this.usersRepository.save(user);
     return filterUserResponse(updatedUser);
   }
+
+  async listAllDoctors(): Promise<UserResponseDto[]> {
+    const result = await this.usersRepository.find({ where: { role: 'doctor' } });
+    return result.map(user => filterUserResponse(user));
+  }
 }

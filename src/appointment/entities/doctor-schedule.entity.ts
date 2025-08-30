@@ -11,7 +11,7 @@ import {
 import { User } from '@/users/user.entity';
 import { TimeSlot } from './time-slot.entity';
 
-@Index(['doctor', 'date'], { unique: true }) // Prevent duplicate schedules for same doctor on same date
+@Index(['doctor', 'date', 'startTime', 'endTime'], { unique: true }) // Prevent overlapping schedules for same doctor on same date and time range
 @Entity()
 export class DoctorSchedule {
   @PrimaryGeneratedColumn('uuid')

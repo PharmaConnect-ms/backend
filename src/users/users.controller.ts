@@ -35,6 +35,17 @@ export class UsersController {
     return this.usersService.createUser(createUserDto);
   }
 
+  //list all doctors
+  @Get('get-all-doctors')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'List all doctors' })
+  @ApiOkResponse({ description: 'Doctors found' })
+  @ApiNotFoundResponse({ description: 'No doctors found' })
+  async listAllDoctors() {
+    return this.usersService.listAllDoctors();
+  }
+
   @Get(':id')
   @ApiOperation({ summary: 'Get user by ID' })
   @ApiOkResponse({ description: 'User found' })

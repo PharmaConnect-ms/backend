@@ -110,6 +110,44 @@ export class TimeSlotService {
     return generatedSlots;
   }
 
+  async createTimeSlotsForNewSchedule(doctorScheduleId: string): Promise<TimeSlot[]> {
+    const doctorSchedule = await this.doctorScheduleRepo.findOne({
+      where: { id: doctorScheduleId },
+      relations: ['doctor'],
+    });
+
+    if (!doctorSchedule) {
+      throw new NotFoundException('Doctor schedule not found');
+    }
+
+    if (!doctorSchedule.isActive) {
+      return []; // Return empty array if schedule is not active
+    }
+
+    // Check if slots already exist for this schedule
+    const existingSlots = await this.timeSlotRepo.find({
+      where: {
+        doctorSchedule: { id: doctorSchedule.id },
+      },
+    });
+
+    // If slots already exist, return them
+    if (existingSlots.length > 0) {
+      return existingSlots;
+    }
+
+    // Generate time slots for the schedule's specific date
+    const slots = this.generateSlotsForDate(doctorSchedule.date, doctorSchedule);
+    const generatedSlots: TimeSlot[] = [];
+
+    for (const slot of slots) {
+      const savedSlot = await this.timeSlotRepo.save(slot);
+      generatedSlots.push(savedSlot);
+    }
+
+    return generatedSlots;
+  }
+
   private generateSlotsForDate(date: Date, doctorSchedule: DoctorSchedule): TimeSlot[] {
     const slots: TimeSlot[] = [];
     const [startHour, startMinute] = doctorSchedule.startTime.split(':').map(Number);
