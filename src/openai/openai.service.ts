@@ -148,4 +148,66 @@ If nothing relevant, return [].`,
       return [];
     }
   }
+
+  /**
+   * Update patient summary by intelligently merging previous summary with new prescription information
+   */
+  async updatePatientSummaryWithNewPrescription(
+    file: Express.Multer.File, 
+    previousSummary?: string
+  ): Promise<string> {
+    const { data } = this.toBase64DataUri(file);
+
+    const systemInstruction = `You are a clinical assistant responsible for maintaining comprehensive patient medical summaries. 
+    
+Your task is to update an existing patient summary with new prescription information while maintaining a consistent structure.
+
+Structure your response with these headings:
+- **Diagnoses**: Current and historical conditions
+- **Current Medications**: Active prescriptions with name/strength/frequency  
+- **Previous Medications**: Past medications (if relevant)
+- **Allergies**: Known drug/substance allergies
+- **Recent Tests/Results**: Lab results, imaging, etc.
+- **Follow-ups/Advice**: Upcoming appointments, recommendations
+- **Medical History**: Significant past conditions/treatments
+
+Rules:
+1. Merge information intelligently - don't duplicate entries
+2. Keep the most recent medication information
+3. Preserve important historical context
+4. If information conflicts, favor the newer prescription
+5. If handwriting is unclear, state "Illegible"
+6. If information is missing, write "-"
+7. Maintain chronological context where relevant`;
+
+    const userText = previousSummary 
+      ? `Previous patient summary:\n${previousSummary}\n\nPlease update this summary with the new prescription information from the image below. Merge the information intelligently, avoiding duplicates while preserving important medical history.`
+      : 'Extract and summarize the clinical information from this prescription image to create a new patient summary.';
+
+    const res = await this.client.chat.completions.create(
+      {
+        model: MODEL_VISION,
+        messages: [
+          {
+            role: 'system',
+            content: systemInstruction,
+          },
+          {
+            role: 'user',
+            content: [
+              { type: 'text', text: userText },
+              { type: 'image_url', image_url: { url: data } },
+            ],
+          },
+        ],
+        max_tokens: 800,
+        temperature: 0.1,
+      },
+      {
+        timeout: Number(process.env.OPENAI_TIMEOUT_MS) || 20000,
+      },
+    );
+
+    return res.choices[0].message.content || '';
+  }
 }

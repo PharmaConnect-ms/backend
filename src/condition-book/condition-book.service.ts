@@ -23,7 +23,10 @@ export class ConditionBookService {
 
   // BOOKS
   async createBook(dto: CreateConditionBookDto) {
-    const book = this.bookRepo.create(dto);
+    const book = this.bookRepo.create({
+      ...dto,
+      onsetDate: dto.onsetDate ? new Date(dto.onsetDate).toISOString().split('T')[0] : undefined,
+    });
     return this.bookRepo.save(book);
   }
 
@@ -40,7 +43,11 @@ export class ConditionBookService {
   }
 
   async updateBook(bookId: string, dto: UpdateConditionBookDto) {
-    await this.bookRepo.update(bookId, dto);
+    const updateData = {
+      ...dto,
+      onsetDate: dto.onsetDate ? new Date(dto.onsetDate).toISOString().split('T')[0] : dto.onsetDate,
+    };
+    await this.bookRepo.update(bookId, updateData);
     return this.getBook(bookId);
   }
 

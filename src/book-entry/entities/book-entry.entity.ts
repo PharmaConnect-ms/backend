@@ -27,7 +27,7 @@ export class BookEntry {
   @Column({ nullable: true }) appointmentId?: string;      // FK → appointments.id
   @Column({ nullable: true }) prescriptionId?: string;     // FK → prescriptions.id
 
-  @Column({ default: 'doctor' }) uploadedBy: 'doctor' | 'patient' | 'pharmacist';
+  @Column({ default: 'doctor' }) uploadedBy: 'doctor' | 'patient' | 'pharmacist' | 'admin';
 
   @CreateDateColumn() createdAt: Date;
   @UpdateDateColumn() updatedAt: Date;

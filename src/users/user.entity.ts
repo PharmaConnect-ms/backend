@@ -37,7 +37,7 @@ export class User {
   @Expose()
   address: string;
 
-  @Column({ nullable: true })
+  @Column({ type: 'text', nullable: true })
   @Expose()
   userSummary: string;
 

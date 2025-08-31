@@ -122,10 +122,21 @@ export class PrescriptionService {
   }
 
   async addPrescription(file: Express.Multer.File, patientName: string, doctorId: number, patientId: number) {
-    const summary = await this.openAIService.summarizePatientImage(file);
-    if (summary) {
-      await this.usersService.updateUserSummary(patientId, summary);
-      const reminders = await this.openAIService.extractRemindersFromSummary(summary);
+    // Get existing patient data to preserve previous summary
+    const existingPatient = await this.usersService.findById(patientId);
+    
+    // Use AI to intelligently merge previous summary with new prescription information
+    const updatedSummary = await this.openAIService.updatePatientSummaryWithNewPrescription(
+      file, 
+      existingPatient.userSummary || undefined
+    );
+    
+    if (updatedSummary) {
+      await this.usersService.updateUserSummary(patientId, updatedSummary);
+      
+      // Extract reminders from the updated summary (not just the new prescription)
+      const reminders = await this.openAIService.extractRemindersFromSummary(updatedSummary);
+      
       // Create notification entries
       for (const r of reminders) {
         await this.notificationService.create({
