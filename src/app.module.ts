@@ -22,6 +22,9 @@ import { ImageUploadsModule } from './image-uploads/image-uploads.module';
 import { ConditionBookModule } from './condition-book/condition-book.module';
 import { BookEntryModule } from './book-entry/book-entry.module';
 import { FollowUpModule } from './follow-up/follow-up.module';
+import { ConditionBook } from './condition-book/entities/condition-book.entity';
+import { BookEntry } from './book-entry/entities/book-entry.entity';
+import { FollowUp } from './follow-up/entities/follow-up.entity';
 
 @Module({
   imports: [
@@ -34,7 +37,7 @@ import { FollowUpModule } from './follow-up/follow-up.module';
       username: process.env.DATABASE_USER,
       password: process.env.DATABASE_PASSWORD,
       database: process.env.DATABASE_NAME,
-      entities: [User, Prescription, Meeting, Appointment, DoctorSchedule, TimeSlot, Notification, FiredNotification],
+      entities: [User, Prescription, Meeting, Appointment, DoctorSchedule, TimeSlot, Notification, FiredNotification, ConditionBook, BookEntry, FollowUp],
       synchronize: true, // Set to false in production
     }),
     UsersModule,

@@ -35,6 +35,7 @@ export class ConditionBookService {
   }
 
   async listBooksByPatient(patientId: string) {
+    console.log('Listing books for patient:', patientId);   
     return this.bookRepo.find({ where: { patientId }, order: { updatedAt: 'DESC' } });
   }
 
