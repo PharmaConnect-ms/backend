@@ -252,6 +252,50 @@ export class TimeSlotService {
     return slotsWithAppointments.map(slot => this.toResponseDto(slot));
   }
 
+  async findBySchedulerId(schedulerId: string): Promise<TimeSlotResponseDto[]> {
+    // Verify the doctor schedule exists
+    const doctorSchedule = await this.doctorScheduleRepo.findOne({
+      where: { id: schedulerId },
+      relations: ['doctor'],
+    });
+
+    if (!doctorSchedule) {
+      throw new NotFoundException('Doctor schedule not found');
+    }
+
+    const slots = await this.timeSlotRepo.find({
+      where: {
+        doctorSchedule: { id: schedulerId },
+      },
+      relations: ['doctorSchedule', 'doctorSchedule.doctor'],
+      order: {
+        date: 'ASC',
+        startTime: 'ASC',
+      },
+    });
+
+    // For each slot, check if there's an associated appointment
+    const slotsWithAppointments = await Promise.all(
+      slots.map(async (slot) => {
+        const appointment = await this.timeSlotRepo.manager.findOne('Appointment', {
+          where: { timeSlot: { id: slot.id } },
+          relations: ['patient'],
+        }) as {
+          id: string;
+          appointmentNo: number;
+          type: string;
+          patient: {
+            id: number;
+            username: string;
+          };
+        } | null;
+        return { ...slot, appointment };
+      })
+    );
+
+    return slotsWithAppointments.map(slot => this.toResponseDto(slot));
+  }
+
   async findOne(id: string): Promise<TimeSlot> {
     const slot = await this.timeSlotRepo.findOne({
       where: { id },

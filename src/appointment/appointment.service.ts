@@ -45,6 +45,7 @@ export class AppointmentService {
       patient: {
         id: appointment.patient.id,
         username: appointment.patient.username,
+        userSummary: appointment.patient.userSummary,
       },
       timeSlot: {
         id: appointment.timeSlot.id,

@@ -56,6 +56,13 @@ export class TimeSlotController {
     return this.timeSlotService.findByDoctor(doctorId);
   }
 
+  @Get('scheduler/:schedulerId')
+  @ApiOperation({ summary: 'Get all time slots for a specific doctor schedule' })
+  @ApiResponse({ status: 200, type: [TimeSlotResponseDto] })
+  findBySchedulerId(@Param('schedulerId') schedulerId: string): Promise<TimeSlotResponseDto[]> {
+    return this.timeSlotService.findBySchedulerId(schedulerId);
+  }
+
   @Get(':id')
   @ApiOperation({ summary: 'Get time slot by ID' })
   @ApiResponse({ status: 200, type: TimeSlot })

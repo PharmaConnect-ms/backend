@@ -6,4 +6,8 @@ export class UserSummaryDto {
 
   @ApiProperty({ example: 'dr.john' })
   username: string;
+
+  @ApiProperty()
+  userSummary?: string;
+
 }
