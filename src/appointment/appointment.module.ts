@@ -8,6 +8,7 @@ import { TimeSlot } from './entities/time-slot.entity';
 import { AppointmentService } from './appointment.service';
 import { DoctorScheduleService } from './doctor-schedule.service';
 import { TimeSlotService } from './time-slot.service';
+import { AppointmentScheduler } from './appointment.scheduler';
 import { AppointmentController } from './appointment.controller';
 import { DoctorScheduleController } from './doctor-schedule.controller';
 import { TimeSlotController } from './time-slot.controller';
@@ -32,12 +33,14 @@ import { Meeting } from '@/meeting/entities/meeting.entity';
   providers: [
     AppointmentService, 
     DoctorScheduleService, 
-    TimeSlotService
+    TimeSlotService,
+    AppointmentScheduler
   ],
   exports: [
     AppointmentService, 
     DoctorScheduleService, 
-    TimeSlotService
+    TimeSlotService,
+    AppointmentScheduler
   ],
 })
 export class AppointmentModule {}
