@@ -1,6 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
 
-export class MeetingResponseDto {
+export class StandaloneMeetingResponseDto {
   @ApiProperty()
   id: string;
 
@@ -17,10 +17,7 @@ export class MeetingResponseDto {
   password?: string;
 
   @ApiProperty()
-  status: string;
-
-  @ApiProperty({ required: false })
-  topic?: string;
+  topic: string;
 
   @ApiProperty({ required: false })
   startTime?: Date;
@@ -35,8 +32,11 @@ export class MeetingResponseDto {
   hostEmail: string;
 
   @ApiProperty()
+  status: string;
+
+  @ApiProperty()
   createdAt: Date;
 
   @ApiProperty()
-  appointmentId: string;
+  meetingType: string; // 'standalone' vs 'appointment'
 }

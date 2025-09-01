@@ -1,6 +1,6 @@
 // src/appointment/appointment.module.ts
 
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Appointment } from './entities/appointment.entity';
 import { DoctorSchedule } from './entities/doctor-schedule.entity';
@@ -14,6 +14,7 @@ import { DoctorScheduleController } from './doctor-schedule.controller';
 import { TimeSlotController } from './time-slot.controller';
 import { User } from '@/users/user.entity';
 import { Meeting } from '@/meeting/entities/meeting.entity';
+import { MeetingModule } from '@/meeting/meeting.module';
 
 @Module({
   imports: [
@@ -23,7 +24,8 @@ import { Meeting } from '@/meeting/entities/meeting.entity';
       TimeSlot, 
       User, 
       Meeting
-    ])
+    ]),
+    forwardRef(() => MeetingModule)
   ],
   controllers: [
     AppointmentController, 

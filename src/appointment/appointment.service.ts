@@ -2,6 +2,8 @@ import {
   Injectable,
   NotFoundException,
   BadRequestException,
+  Inject,
+  forwardRef,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Between } from 'typeorm';
@@ -12,7 +14,7 @@ import { User } from '@/users/user.entity';
 import { Meeting } from '@/meeting/entities/meeting.entity';
 import { TimeSlot } from './entities/time-slot.entity';
 import { TimeSlotStatus } from './types';
-import { v4 as uuid } from 'uuid';
+import { MeetingService } from '@/meeting/meeting.service';
 
 @Injectable()
 export class AppointmentService {
@@ -28,6 +30,9 @@ export class AppointmentService {
 
     @InjectRepository(TimeSlot)
     private readonly timeSlotRepo: Repository<TimeSlot>,
+
+    @Inject(forwardRef(() => MeetingService))
+    private readonly meetingService: MeetingService,
   ) {}
 
   private toResponseDto(appointment: Appointment): AppointmentResponseDto {
@@ -54,7 +59,7 @@ export class AppointmentService {
         endTime: appointment.timeSlot.endTime,
         status: appointment.timeSlot.status,
       },
-      meetingLink: appointment.meeting?.roomLink,
+      meetingLink: appointment.meeting?.joinUrl,
       notes: appointment.notes,
     };
   }
@@ -105,26 +110,45 @@ export class AppointmentService {
       notes: createDto.notes,
     });
 
-    // If it's an online appointment, create a Jitsi meeting
-    if (createDto.type === AppointmentType.ONLINE) {
-      const roomLink = this.generateJitsiMeetingLink(appointment.id);
-      const meeting = this.meetingRepo.create({
-        roomLink,
-        status: 'scheduled',
-        meetingId: uuid(),
-      });
-      await this.meetingRepo.save(meeting);
-      appointment.meeting = meeting;
-    }
-
-    // Save appointment
+    // Save appointment first
     const savedAppointment = await this.appointmentRepo.save(appointment);
+
+    // If it's an online appointment, automatically create a Zoom meeting
+    if (createDto.type === AppointmentType.ONLINE) {
+      try {
+        // Use the doctor's email as the host email
+        const hostEmail = timeSlot.doctorSchedule.doctor.email;
+        const topic = `Medical Consultation - Dr. ${timeSlot.doctorSchedule.doctor.username} & ${patient.username}`;
+        
+        // Create the meeting using the meeting service
+        await this.meetingService.createMeeting({
+          appointmentId: savedAppointment.id,
+          hostEmail,
+          topic,
+          startTime: scheduledAt.toISOString(),
+          duration: 60, // Default 60 minutes
+          agenda: `Medical consultation appointment between Dr. ${timeSlot.doctorSchedule.doctor.username} and patient ${patient.username}`,
+        });
+
+        console.log(`Zoom meeting created automatically for online appointment ${savedAppointment.id}`);
+      } catch (error) {
+        console.error('Failed to create Zoom meeting for online appointment:', error);
+        // Don't throw error here to prevent appointment creation failure
+        // The meeting can be created later via the meeting API
+      }
+    }
 
     // Update time slot status to booked
     timeSlot.status = TimeSlotStatus.BOOKED;
     await this.timeSlotRepo.save(timeSlot);
 
-    return this.toResponseDto(savedAppointment);
+    // Fetch the updated appointment with meeting relation
+    const appointmentWithMeeting = await this.appointmentRepo.findOne({
+      where: { id: savedAppointment.id },
+      relations: ['doctor', 'patient', 'meeting', 'timeSlot'],
+    });
+
+    return this.toResponseDto(appointmentWithMeeting || savedAppointment);
   }
 
   async findAll(): Promise<AppointmentResponseDto[]> {
@@ -214,7 +238,6 @@ export class AppointmentService {
     return scheduledAt;
   }
 
-  private generateJitsiMeetingLink(appointmentId: string): string {
-    return `https://meet.jit.si/pharmaconnect-${appointmentId}`;
-  }
+  // Note: Meeting creation is now handled separately via the meeting API
+  // Use POST /meetings/quick or POST /meetings to create Zoom meetings
 }
