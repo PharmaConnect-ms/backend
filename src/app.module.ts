@@ -22,9 +22,12 @@ import { ImageUploadsModule } from './image-uploads/image-uploads.module';
 import { ConditionBookModule } from './condition-book/condition-book.module';
 import { BookEntryModule } from './book-entry/book-entry.module';
 import { FollowUpModule } from './follow-up/follow-up.module';
+import { FamilyProfileModule } from './family-profile/family-profile.module';
 import { ConditionBook } from './condition-book/entities/condition-book.entity';
 import { BookEntry } from './book-entry/entities/book-entry.entity';
 import { FollowUp } from './follow-up/entities/follow-up.entity';
+import { FamilyMember } from './family-profile/entities/family-member.entity';
+import { CareProfile } from './family-profile/entities/care-profile.entity';
 
 @Module({
   imports: [
@@ -37,7 +40,7 @@ import { FollowUp } from './follow-up/entities/follow-up.entity';
       username: process.env.DATABASE_USER,
       password: process.env.DATABASE_PASSWORD,
       database: process.env.DATABASE_NAME,
-      entities: [User, Prescription, Meeting, Appointment, DoctorSchedule, TimeSlot, Notification, FiredNotification, ConditionBook, BookEntry, FollowUp],
+      entities: [User, Prescription, Meeting, Appointment, DoctorSchedule, TimeSlot, Notification, FiredNotification, ConditionBook, BookEntry, FollowUp, FamilyMember, CareProfile],
       synchronize: true, // Set to false in production
     }),
     UsersModule,
@@ -51,6 +54,7 @@ import { FollowUp } from './follow-up/entities/follow-up.entity';
     ConditionBookModule,
     BookEntryModule,
     FollowUpModule,
+    FamilyProfileModule,
   ],
 })
 export class AppModule {}

@@ -152,10 +152,7 @@ If nothing relevant, return [].`,
   /**
    * Update patient summary by intelligently merging previous summary with new prescription information
    */
-  async updatePatientSummaryWithNewPrescription(
-    file: Express.Multer.File, 
-    previousSummary?: string
-  ): Promise<string> {
+  async updatePatientSummaryWithNewPrescription(file: Express.Multer.File, previousSummary?: string): Promise<string> {
     const { data } = this.toBase64DataUri(file);
 
     const systemInstruction = `You are a clinical assistant responsible for maintaining comprehensive patient medical summaries. 
@@ -180,9 +177,7 @@ Rules:
 6. If information is missing, write "-"
 7. Maintain chronological context where relevant`;
 
-    const userText = previousSummary 
-      ? `Previous patient summary:\n${previousSummary}\n\nPlease update this summary with the new prescription information from the image below. Merge the information intelligently, avoiding duplicates while preserving important medical history.`
-      : 'Extract and summarize the clinical information from this prescription image to create a new patient summary.';
+    const userText = previousSummary ? `Previous patient summary:\n${previousSummary}\n\nPlease update this summary with the new prescription information from the image below. Merge the information intelligently, avoiding duplicates while preserving important medical history.` : 'Extract and summarize the clinical information from this prescription image to create a new patient summary.';
 
     const res = await this.client.chat.completions.create(
       {
@@ -210,4 +205,37 @@ Rules:
 
     return res.choices[0].message.content || '';
   }
+
+  async extractRemindersFromFollowUpText(summary: string) {
+    const res = await this.client.chat.completions.create({
+      model: 'gpt-4o-mini',
+      messages: [
+        {
+          role: 'system',
+          content: `You are a medical reminder extractor.
+Return JSON array of reminders with fields:
+- type: ("medication_reminder" | "appointment_reminder" | "follow_up_reminder" | "general_reminder")
+- title: short label
+- description: optional details
+- reminderTime: ISO datetime (if frequency, give first next time)
+If nothing relevant, return [].`,
+        },
+        { role: 'user', content: summary },
+      ],
+      response_format: { type: 'json_object' },
+    });
+
+    try {
+      const content = res.choices[0].message.content;
+      if (typeof content !== 'string') {
+        return [];
+      }
+      const parsed = JSON.parse(content) as { reminders?: ReminderInterface[] };
+      return Array.isArray(parsed.reminders) ? parsed.reminders : [];
+    } catch {
+      return [];
+    }
+  }
+
+  
 }

@@ -119,4 +119,11 @@ export class ConditionBookService {
     await this.folRepo.update(id, { status });
     return this.folRepo.findOne({ where: { id } });
   }
+
+  async getBookById(id: string): Promise<ConditionBook> {
+    const book = await this.bookRepo.findOne({ where: { id } });
+    if (!book) throw new NotFoundException('Book not found');
+    return book;
+  }
+
 }

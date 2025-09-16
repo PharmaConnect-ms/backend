@@ -4,12 +4,19 @@ import { Repository, FindOptionsWhere, Between, LessThan, MoreThan } from 'typeo
 import { CreateFollowUpDto } from './dto/create-follow-up.dto';
 import { UpdateFollowUpDto } from './dto/update-follow-up.dto';
 import { FollowUp, FollowUpStatus, FollowUpKind } from './entities/follow-up.entity';
+import { ConditionBook } from '@/condition-book/entities/condition-book.entity';
+import { OpenAIService } from '@/openai/openai.service';
+import { NotificationService } from '@/notification/notification.service';
 
 @Injectable()
 export class FollowUpService {
   constructor(
     @InjectRepository(FollowUp)
     private readonly followUpRepository: Repository<FollowUp>,
+    @InjectRepository(ConditionBook)
+    private readonly conditionBookRepository: Repository<ConditionBook>,
+    private readonly openAIService: OpenAIService,
+    private readonly notificationService: NotificationService,
   ) {}
 
   /**
@@ -25,6 +32,33 @@ export class FollowUpService {
         status: 'upcoming',
       });
 
+      const conditionBook = await this.conditionBookRepository.findOne({ where: { id: followUp.bookId } });
+
+      const followUpDetails = `New Follow-Up Created:
+      - Book ID: ${followUp.bookId}
+      - Due At: ${followUp.dueAt}
+      - Remind At 1: ${followUp.remindAt1}
+      - Remind At 2: ${followUp.remindAt2}
+      - Status: ${followUp.status}
+      `;
+
+      const reminders = await this.openAIService.extractRemindersFromFollowUpText(followUpDetails);
+
+      if(!conditionBook?.patientId){
+        throw new NotFoundException(`Condition book with ID ${followUp.bookId} not found or has no associated patient`);
+      }
+
+      // Create notification entries
+      for (const r of reminders) {
+        await this.notificationService.create({
+          title: r.title,
+          description: r.description,
+          reminderTime: r.reminderTime,
+          type: r.type,
+          userId: Number(conditionBook?.patientId),
+        });
+      }
+
       return await this.followUpRepository.save(followUp);
     } catch (error: any) {
       const message = error instanceof Error ? error.message : 'Unknown error';
@@ -35,15 +69,7 @@ export class FollowUpService {
   /**
    * Find all follow-ups with optional filtering
    */
-  async findAll(options?: {
-    bookId?: string;
-    status?: FollowUpStatus;
-    kind?: FollowUpKind;
-    dueAfter?: Date;
-    dueBefore?: Date;
-    limit?: number;
-    offset?: number;
-  }): Promise<FollowUp[]> {
+  async findAll(options?: { bookId?: string; status?: FollowUpStatus; kind?: FollowUpKind; dueAfter?: Date; dueBefore?: Date; limit?: number; offset?: number }): Promise<FollowUp[]> {
     const where: FindOptionsWhere<FollowUp> = {};
 
     if (options?.bookId) {
@@ -133,16 +159,8 @@ export class FollowUpService {
    */
   async findDueForReminders(): Promise<FollowUp[]> {
     const now = new Date();
-    
-    return await this.followUpRepository
-      .createQueryBuilder('followUp')
-      .where('followUp.status = :status', { status: 'upcoming' })
-      .andWhere(
-        '(followUp.remindAt1 IS NOT NULL AND followUp.remindAt1 <= :now) OR (followUp.remindAt2 IS NOT NULL AND followUp.remindAt2 <= :now)',
-        { now }
-      )
-      .orderBy('followUp.dueAt', 'ASC')
-      .getMany();
+
+    return await this.followUpRepository.createQueryBuilder('followUp').where('followUp.status = :status', { status: 'upcoming' }).andWhere('(followUp.remindAt1 IS NOT NULL AND followUp.remindAt1 <= :now) OR (followUp.remindAt2 IS NOT NULL AND followUp.remindAt2 <= :now)', { now }).orderBy('followUp.dueAt', 'ASC').getMany();
   }
 
   /**
@@ -195,7 +213,7 @@ export class FollowUpService {
   async markAsCompleted(id: string): Promise<FollowUp> {
     const followUp = await this.findOne(id);
     followUp.status = 'completed';
-    
+
     return await this.followUpRepository.save(followUp);
   }
 
@@ -205,7 +223,7 @@ export class FollowUpService {
   async markAsMissed(id: string): Promise<FollowUp> {
     const followUp = await this.findOne(id);
     followUp.status = 'missed';
-    
+
     return await this.followUpRepository.save(followUp);
   }
 
@@ -215,7 +233,7 @@ export class FollowUpService {
   async markAsCancelled(id: string): Promise<FollowUp> {
     const followUp = await this.findOne(id);
     followUp.status = 'cancelled';
-    
+
     return await this.followUpRepository.save(followUp);
   }
 
@@ -227,9 +245,9 @@ export class FollowUpService {
       .createQueryBuilder()
       .update(FollowUp)
       .set({ status: 'missed' })
-      .where('status = :status AND dueAt < :now', { 
-        status: 'upcoming', 
-        now: new Date() 
+      .where('status = :status AND dueAt < :now', {
+        status: 'upcoming',
+        now: new Date(),
       })
       .execute();
 
@@ -241,7 +259,7 @@ export class FollowUpService {
    */
   async remove(id: string): Promise<void> {
     const followUp = await this.findOne(id);
-    
+
     try {
       await this.followUpRepository.remove(followUp);
     } catch (error: any) {
@@ -263,13 +281,7 @@ export class FollowUpService {
   }> {
     const where: FindOptionsWhere<FollowUp> = bookId ? { bookId } : {};
 
-    const [total, upcoming, completed, missed, cancelled] = await Promise.all([
-      this.followUpRepository.count({ where }),
-      this.followUpRepository.count({ where: { ...where, status: 'upcoming' } }),
-      this.followUpRepository.count({ where: { ...where, status: 'completed' } }),
-      this.followUpRepository.count({ where: { ...where, status: 'missed' } }),
-      this.followUpRepository.count({ where: { ...where, status: 'cancelled' } }),
-    ]);
+    const [total, upcoming, completed, missed, cancelled] = await Promise.all([this.followUpRepository.count({ where }), this.followUpRepository.count({ where: { ...where, status: 'upcoming' } }), this.followUpRepository.count({ where: { ...where, status: 'completed' } }), this.followUpRepository.count({ where: { ...where, status: 'missed' } }), this.followUpRepository.count({ where: { ...where, status: 'cancelled' } })]);
 
     const overdue = await this.followUpRepository.count({
       where: {
@@ -318,12 +330,12 @@ export class FollowUpService {
    */
   async reschedule(id: string, newDueAt: Date, notes?: string): Promise<FollowUp> {
     const followUp = await this.findOne(id);
-    
+
     followUp.dueAt = newDueAt;
     if (notes) {
       followUp.notes = notes;
     }
-    
+
     return await this.followUpRepository.save(followUp);
   }
 }

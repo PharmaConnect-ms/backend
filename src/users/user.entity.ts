@@ -1,5 +1,6 @@
 import { Entity, PrimaryGeneratedColumn, Column , OneToMany } from 'typeorm';
 import { Prescription } from '@/prescription/entities/prescription.entity';
+import { FamilyMember } from '../family-profile/entities/family-member.entity';
 import { Exclude, Expose } from 'class-transformer';
 
 
@@ -58,5 +59,10 @@ export class User {
   @OneToMany(() => Prescription, prescription => prescription.patient)
   @Expose()
   prescriptionsReceived: Prescription[];
+
+  // Family members under care
+  @OneToMany(() => FamilyMember, familyMember => familyMember.caregiver)
+  @Expose()
+  familyMembers: FamilyMember[];
 
 }

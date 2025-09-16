@@ -7,5 +7,6 @@ import { OpenAIController } from './openai.controller';
   imports: [ConfigModule.forRoot({ isGlobal: true })],
   providers: [OpenAIService],
   controllers: [OpenAIController],
+  exports: [OpenAIService],
 })
 export class OpenAIModule {}

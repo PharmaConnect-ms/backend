@@ -12,6 +12,7 @@ import {
 import { User } from '@/users/user.entity';
 import { Meeting } from '@/meeting/entities/meeting.entity';
 import { TimeSlot } from './time-slot.entity';
+import { FamilyMember } from '../../family-profile/entities/family-member.entity';
 
 export enum AppointmentType {
   PHYSICAL = 'physical',
@@ -38,6 +39,9 @@ export class Appointment {
 
   @ManyToOne(() => User, { eager: true })
   patient: User;
+
+  @ManyToOne(() => FamilyMember, (familyMember) => familyMember.appointments, { nullable: true })
+  familyMember?: FamilyMember;
 
   @OneToOne(() => TimeSlot, { eager: true })
   @JoinColumn()
