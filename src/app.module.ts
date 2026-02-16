@@ -5,6 +5,7 @@ import { ConfigModule } from '@nestjs/config';
 import { ScheduleModule } from '@nestjs/schedule';
 import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
+import { CommonModule } from './common/common.module';
 import { User } from './users/user.entity';
 import { Prescription } from './prescription/entities/prescription.entity';
 import { Meeting } from './meeting/entities/meeting.entity';
@@ -30,6 +31,7 @@ import { FollowUp } from './follow-up/entities/follow-up.entity';
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
     ScheduleModule.forRoot(),
+    CommonModule,
     TypeOrmModule.forRoot({
       type: 'mysql',
       host: process.env.DATABASE_HOST,
