@@ -1,8 +1,15 @@
-import { Injectable, BadRequestException, InternalServerErrorException } from '@nestjs/common';
+import { Injectable, BadRequestException, InternalServerErrorException, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { HttpService } from '@nestjs/axios';
 import { firstValueFrom } from 'rxjs';
 import { AxiosError } from 'axios';
+import {
+  ErrorSanitizer,
+  SecretsValidator,
+  INTEGRATION_SECRETS,
+  SafeURLValidator,
+  PHARMACONNECT_TRUSTED_DOMAINS,
+} from '../common/security';
 
 export interface ZoomMeetingRequest {
   topic: string;
@@ -62,23 +69,32 @@ export class ZoomService {
   private readonly zoomApiUrl = 'https://api.zoom.us/v2';
   private accessToken: string | null = null;
   private tokenExpiry: Date | null = null;
+  private readonly logger = new Logger('ZoomService');
   
   constructor(
     private readonly configService: ConfigService,
     private readonly httpService: HttpService,
-  ) {}
+  ) {
+    // POLICY: B. Secrets Management - Validate required secrets at startup
+    SecretsValidator.validateRequired(
+      INTEGRATION_SECRETS.ZOOM.required,
+      INTEGRATION_SECRETS.ZOOM.optional,
+    );
+
+    // Log that Zoom integration is configured
+    this.logger.log('Zoom integration initialized with required credentials');
+  }
 
   private handleError(error: unknown, context: string): never {
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    const axiosError = error as AxiosError;
-    const responseData = axiosError.response?.data;
-    
-    console.error(`${context}:`, responseData || errorMessage);
-    throw new InternalServerErrorException(`${context}: ${errorMessage}`);
+    // POLICY: A. Secure Configuration - Sanitize error messages
+    const isDevelopment = this.configService.get<string>('NODE_ENV') !== 'production';
+    throw ErrorSanitizer.createSafeThirdPartyError(context, error, isDevelopment);
   }
 
   /**
    * Get access token using Server-to-Server OAuth
+   * POLICY: A. Secure Configuration - Uses HTTPS, environment variables for credentials
+   * POLICY: B. Secrets Management - Never logs or exposes credentials
    */
   private async getAccessToken(): Promise<string> {
     // Check if we have a valid token
@@ -86,19 +102,15 @@ export class ZoomService {
       return this.accessToken;
     }
 
-    const accountId = this.configService.get<string>('ZOOM_ACCOUNT_ID');
-    const clientId = this.configService.get<string>('ZOOM_CLIENT_ID');
-    const clientSecret = this.configService.get<string>('ZOOM_CLIENT_SECRET');
-
-    if (!accountId || !clientId || !clientSecret) {
-      throw new BadRequestException(
-        'Missing Zoom API credentials. Please set ZOOM_ACCOUNT_ID, ZOOM_CLIENT_ID, and ZOOM_CLIENT_SECRET in your environment variables'
-      );
-    }
-
     try {
+      // POLICY: B. Secrets Management - Use secure accessor for secrets
+      const accountId = SecretsValidator.getRequired('ZOOM_ACCOUNT_ID');
+      const clientId = SecretsValidator.getRequired('ZOOM_CLIENT_ID');
+      const clientSecret = SecretsValidator.getRequired('ZOOM_CLIENT_SECRET');
+
       const credentials = Buffer.from(`${clientId}:${clientSecret}`).toString('base64');
       
+      // POLICY: A. Secure Configuration - Always use HTTPS
       const response = await firstValueFrom(
         this.httpService.post<ZoomTokenResponse>(
           'https://zoom.us/oauth/token',
@@ -116,6 +128,7 @@ export class ZoomService {
       // Set expiry to 5 minutes before actual expiry for safety
       this.tokenExpiry = new Date(Date.now() + (response.data.expires_in - 300) * 1000);
       
+      this.logger.debug('Zoom access token refreshed');
       return this.accessToken;
     } catch (error) {
       const axiosError = error as AxiosError;
@@ -124,15 +137,21 @@ export class ZoomService {
         ? String(errorData.error_description) 
         : axiosError.message;
       
-      console.error('Error getting Zoom access token:', errorData || axiosError.message);
-      throw new InternalServerErrorException(
-        `Failed to get Zoom access token. Please verify your Zoom API credentials. Error: ${errorDescription}`
+      // POLICY: A. Secure Configuration - Sanitize error message, never leak credentials
+      const sanitized = ErrorSanitizer.sanitize(
+        new Error('Failed to obtain Zoom access token'),
+        'Zoom OAuth token request',
+        this.configService.get<string>('NODE_ENV') !== 'production',
       );
+
+      throw new InternalServerErrorException(sanitized);
     }
   }
 
   /**
    * Create a new Zoom meeting
+   * POLICY: D. Safe Links/Redirects - Returns HTTPS links only
+   * POLICY: A. Secure Configuration - Error handling via ErrorSanitizer
    */
   async createMeeting(
     userEmail: string,
@@ -146,16 +165,27 @@ export class ZoomService {
         'Content-Type': 'application/json',
       };
 
-  // Use the explicit user email so Server-to-Server OAuth tokens that are
-  // scoped to operate on behalf of a specific user will work correctly.
-  // `userEmail` is expected to be the host's email address.
-  const url = `${this.zoomApiUrl}/users/${encodeURIComponent(userEmail)}/meetings`;
+      // POLICY: A. Secure Configuration - Always use HTTPS
+      const url = `${this.zoomApiUrl}/users/${encodeURIComponent(userEmail)}/meetings`;
+      // POLICY: D. Safe Links/Redirects - Validate the API endpoint is HTTPS
+      SafeURLValidator.validateTrustedDomain(url, PHARMACONNECT_TRUSTED_DOMAINS.ZOOM);
       
       const response = await firstValueFrom(
         this.httpService.post(url, meetingData, { headers })
       );
 
-      return response.data as ZoomMeetingResponse;
+      // Validate response contains safe HTTPS links
+      const zoomResponse = response.data as ZoomMeetingResponse;
+      if (zoomResponse.join_url) {
+        SafeURLValidator.validateTrustedDomain(zoomResponse.join_url, PHARMACONNECT_TRUSTED_DOMAINS.ZOOM);
+        SafeURLValidator.validateNoSensitiveData(zoomResponse.join_url);
+      }
+      if (zoomResponse.start_url) {
+        SafeURLValidator.validateTrustedDomain(zoomResponse.start_url, PHARMACONNECT_TRUSTED_DOMAINS.ZOOM);
+        SafeURLValidator.validateNoSensitiveData(zoomResponse.start_url);
+      }
+
+      return zoomResponse;
     } catch (error) {
       const axiosError = error as AxiosError;
       const errorData: unknown = axiosError.response?.data;
@@ -167,10 +197,7 @@ export class ZoomService {
         }
       }
 
-      console.error('Error creating Zoom meeting:', errorData || axiosError.message);
-
       // Zoom returns specific error codes/messages when the token lacks required scopes.
-      // Detect the common 'missing scopes' error and return a helpful message.
       let zoomCode: number | null = null;
       let zoomMsg = '';
       if (errorData && typeof errorData === 'object') {
@@ -180,10 +207,10 @@ export class ZoomService {
       }
 
       if (zoomCode === 4711 || zoomMsg.includes('does not contain scopes')) {
-        // Give actionable guidance to the developer to fix app scopes/activation.
+        // Give actionable guidance to the developer without exposing credentials
         throw new BadRequestException(
-          'Zoom access token is missing required scopes (e.g. meeting:write).\n' +
-          'Please open your Zoom Marketplace Server-to-Server OAuth app, add the appropriate meeting write scopes (e.g. meeting:write, meeting:write:admin or meeting:write:meeting), save, and activate the app for your account. Also ensure ZOOM_ACCOUNT_ID matches the Account ID for the app.'
+          'Zoom access token is missing required scopes (e.g., meeting:write). ' +
+          'Please ensure your Zoom app has the appropriate meeting write scopes enabled and activated.'
         );
       }
 
@@ -191,12 +218,11 @@ export class ZoomService {
         // Clear token and retry once
         this.accessToken = null;
         this.tokenExpiry = null;
-        throw new InternalServerErrorException('Zoom authentication failed. Please check your credentials.');
+        throw new InternalServerErrorException('Zoom authentication failed. Credentials may have expired. Please retry the request.');
       }
 
-      throw new InternalServerErrorException(
-        `Failed to create Zoom meeting: ${errorMessage}`
-      );
+      // Use ErrorSanitizer for other errors
+      throw this.handleError(error, 'Creating Zoom meeting');
     }
   }
 
