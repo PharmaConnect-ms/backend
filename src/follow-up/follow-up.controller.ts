@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, Query, ParseUUIDPipe } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, Query, ParseUUIDPipe, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiParam } from '@nestjs/swagger';
 import { FollowUpService } from './follow-up.service';
 import { CreateFollowUpDto } from './dto/create-follow-up.dto';
@@ -6,8 +6,10 @@ import { UpdateFollowUpDto } from './dto/update-follow-up.dto';
 import { QueryFollowUpDto } from './dto/query-follow-up.dto';
 import { FollowUpResponseDto, FollowUpStatisticsDto } from './dto/follow-up-response.dto';
 import { RescheduleFollowUpDto } from './dto/status-change.dto';
+import { JwtAuthGuard } from 'src/auth/jwt-auth.guard';
 
 @ApiTags('follow-up')
+@UseGuards(JwtAuthGuard)
 @Controller('follow-up')
 export class FollowUpController {
   constructor(private readonly followUpService: FollowUpService) {}

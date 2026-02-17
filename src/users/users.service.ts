@@ -14,6 +14,10 @@ export class UsersService {
     private usersRepository: Repository<User>,
   ) {}
 
+  private isPasswordStrong(password: string): boolean {
+    return /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{12,100}$/.test(password);
+  }
+
   async createUser(createUserDto: CreateUserDto): Promise<User> {
     const { username, email, password, role, provider } = createUserDto;
 
@@ -31,6 +35,11 @@ export class UsersService {
     } else {
       if (!password) {
         throw new BadRequestException('Password is required for local users');
+      }
+      if (!this.isPasswordStrong(password)) {
+        throw new BadRequestException(
+          'Password must be at least 12 characters and include uppercase, lowercase, number, and special character',
+        );
       }
       const hashedPassword = await bcrypt.hash(password, 10);
       const existingUser = await this.usersRepository.findOne({

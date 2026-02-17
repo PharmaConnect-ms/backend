@@ -6,6 +6,7 @@ import {
   Param,
   Body,
   Query,
+  UseGuards,
   ParseIntPipe,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiQuery } from '@nestjs/swagger';
@@ -16,8 +17,10 @@ import {
   UpdateTimeSlotStatusDto, 
   TimeSlotResponseDto 
 } from './dto/time-slot.dto';
+import { JwtAuthGuard } from 'src/auth/jwt-auth.guard';
 
 @ApiTags('Time Slots')
+@UseGuards(JwtAuthGuard)
 @Controller('time-slots')
 export class TimeSlotController {
   constructor(private readonly timeSlotService: TimeSlotService) {}

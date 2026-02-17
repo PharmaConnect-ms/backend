@@ -16,8 +16,6 @@ import { User } from './user.entity';
 
 
 @ApiTags('Users')
-// @ApiBearerAuth()
-// @UseGuards(JwtAuthGuard)
 @Controller('users')
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
@@ -47,6 +45,8 @@ export class UsersController {
   }
 
   @Get(':id')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'Get user by ID' })
   @ApiOkResponse({ description: 'User found' })
   @ApiNotFoundResponse({ description: 'User not found' })
@@ -59,13 +59,14 @@ export class UsersController {
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Get all users' })
   @ApiOkResponse({ description: 'Users found' })
-  @UseGuards(JwtAuthGuard)
   async getUsers() {
     return this.usersService.findAll();
   }
 
   //find by email 
   @Get('email/:email')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'Get user by email' })
   @ApiOkResponse({ description: 'User found' })
   @ApiNotFoundResponse({ description: 'User not found' })
@@ -76,6 +77,8 @@ export class UsersController {
 
   //find patient by id
   @Get('patient/:id')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'Get patient by user ID' })
   @ApiOkResponse({ description: 'Patient found' })
   @ApiNotFoundResponse({ description: 'Patient not found' })

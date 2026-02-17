@@ -1,5 +1,5 @@
 // src/condition-book/condition-book.controller.ts
-import { Body, Controller, Get, Param, Patch, Post, Query } from '@nestjs/common';
+import { Body, Controller, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { ConditionBookService } from './condition-book.service';
 import { CreateConditionBookDto } from './dto/create-condition-book.dto';
@@ -8,8 +8,10 @@ import { CreateBookEntryDto } from '@/book-entry/dto/create-book-entry.dto';
 import { CreateFollowUpDto } from '@/follow-up/dto/create-follow-up.dto';
 import { QueryEntriesDto } from './dto/query-entries.dto';
 import { FollowUpStatus } from '@/follow-up/entities/follow-up.entity';
+import { JwtAuthGuard } from 'src/auth/jwt-auth.guard';
 
 @ApiTags('Condition Books')
+@UseGuards(JwtAuthGuard)
 @Controller('condition-books')
 export class ConditionBookController {
   constructor(private readonly svc: ConditionBookService) {}

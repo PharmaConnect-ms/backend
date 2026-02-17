@@ -5,6 +5,7 @@ import {
   Put,
   Param,
   Body,
+  UseGuards,
   ParseIntPipe,
 } from '@nestjs/common';
 import { AppointmentService } from './appointment.service';
@@ -12,8 +13,10 @@ import { CreateAppointmentDto } from './dto/create-appointment.dto';
 import { AppointmentResponseDto } from './dto/appointment-response.dto';
 import { UpdateAppointmentStatusDto } from './dto/update-appointment-status.dto';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
+import { JwtAuthGuard } from 'src/auth/jwt-auth.guard';
 
 @ApiTags('Appointments')
+@UseGuards(JwtAuthGuard)
 @Controller('appointments')
 export class AppointmentController {
   constructor(private readonly appointmentService: AppointmentService) {}

@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Delete, Param, Body } from '@nestjs/common';
+import { Controller, Get, Post, Delete, Param, Body, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBody } from '@nestjs/swagger';
 import { MeetingService } from './meeting.service';
 import { MeetingResponseDto } from './dto/meeting-response.dto';
@@ -6,8 +6,10 @@ import { CreateMeetingDto } from './dto/create-meeting.dto';
 import { CreateQuickMeetingDto } from './dto/create-quick-meeting.dto';
 import { CreateStandaloneMeetingDto } from './dto/create-standalone-meeting.dto';
 import { StandaloneMeetingResponseDto } from './dto/standalone-meeting-response.dto';
+import { JwtAuthGuard } from 'src/auth/jwt-auth.guard';
 
 @ApiTags('Meetings')
+@UseGuards(JwtAuthGuard)
 @Controller('meetings')
 export class MeetingController {
   constructor(private readonly meetingService: MeetingService) {}
