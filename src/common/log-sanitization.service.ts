@@ -13,31 +13,40 @@ export class LogSanitizationService {
 
   // Sensitive patterns to redact
   private readonly SENSITIVE_PATTERNS = [
-    { pattern: /password\s*[:=]\s*["']?[^"'\s,}]+["']?/gi, replacement: 'password: [REDACTED]' },
-    { pattern: /apikey\s*[:=]\s*["']?[^"'\s,}]+["']?/gi, replacement: 'apikey: [REDACTED]' },
-    { pattern: /secret\s*[:=]\s*["']?[^"'\s,}]+["']?/gi, replacement: 'secret: [REDACTED]' },
-    { pattern: /token\s*[:=]\s*["']?[^"'\s,}]+["']?/gi, replacement: 'token: [REDACTED]' },
-    { pattern: /Bearer\s+[A-Za-z0-9\-._~+/]+=*/g, replacement: 'Bearer [REDACTED]' },
-    // Email addresses (partial redaction)
-    { pattern: /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g, replacement: '[EMAIL_REDACTED]' },
-    // Phone numbers
-    { pattern: /\b\d{3}[-.]?\d{3}[-.]?\d{4}\b/g, replacement: '[PHONE_REDACTED]' },
+    // Key=value patterns with controlled length to prevent ReDoS
+    { pattern: /password\s*[:=]\s*[^\s,;}\]]{1,255}/gi, replacement: 'password: [REDACTED]' },
+    { pattern: /apikey\s*[:=]\s*[^\s,;}\]]{1,255}/gi, replacement: 'apikey: [REDACTED]' },
+    { pattern: /secret\s*[:=]\s*[^\s,;}\]]{1,255}/gi, replacement: 'secret: [REDACTED]' },
+    { pattern: /token\s*[:=]\s*[^\s,;}\]]{1,255}/gi, replacement: 'token: [REDACTED]' },
+    // Bearer token pattern (simplified and limited)
+    { pattern: /Bearer\s+[A-Za-z0-9._\-]{20,}/g, replacement: 'Bearer [REDACTED]' },
+    // Email addresses (simpler pattern to avoid backtracking)
+    { pattern: /\b[A-Za-z0-9._%+-]{1,64}@[A-Za-z0-9.-]{1,255}\b/g, replacement: '[EMAIL_REDACTED]' },
+    // Phone numbers (atomic-like pattern)
+    { pattern: /\b\d{3}[-.\s]?\d{3}[-.\s]?\d{4}\b/g, replacement: '[PHONE_REDACTED]' },
     // SSN pattern (xxx-xx-xxxx)
     { pattern: /\b\d{3}-\d{2}-\d{4}\b/g, replacement: '[SSN_REDACTED]' },
-    // Credit card patterns
-    { pattern: /\b\d{4}[\s-]?\d{4}[\s-]?\d{4}[\s-]?\d{4}\b/g, replacement: '[CC_REDACTED]' },
-    // JWT tokens
-    { pattern: /eyJ[A-Za-z0-9_-]+\.eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+/g, replacement: '[JWT_REDACTED]' },
+    // Credit card patterns (limited to actual card length)
+    { pattern: /\b\d{4}[\s.-]?\d{4}[\s.-]?\d{4}[\s.-]?\d{4}\b/g, replacement: '[CC_REDACTED]' },
+    // JWT tokens (simplified pattern with length bounds)
+    { pattern: /eyJ[A-Za-z0-9_-]{50,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}/g, replacement: '[JWT_REDACTED]' },
   ];
 
   /**
    * Sanitize a log message
    * Removes sensitive data while preserving readability
+   * Limits input length to prevent ReDoS attacks
    */
   sanitizeLogMessage(message: string): string {
     if (!message) return message;
 
-    let sanitized = message;
+    // Limit message length to prevent ReDoS attacks
+    const MAX_LOG_LENGTH = 10000;
+    const truncatedMessage = message.length > MAX_LOG_LENGTH 
+      ? message.substring(0, MAX_LOG_LENGTH) + '...[TRUNCATED]'
+      : message;
+
+    let sanitized = truncatedMessage;
 
     // Apply all sanitization patterns
     this.SENSITIVE_PATTERNS.forEach(({ pattern, replacement }) => {
