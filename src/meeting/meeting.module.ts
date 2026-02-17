@@ -8,6 +8,7 @@ import { Meeting } from './entities/meeting.entity';
 import { MeetingService } from './meeting.service';
 import { MeetingController } from './meeting.controller';
 import { ZoomService } from './zoom.service';
+import { WebhooksController } from './webhooks.controller';
 import { Appointment } from '@/appointment/entities/appointment.entity';
 
 @Module({
@@ -16,7 +17,7 @@ import { Appointment } from '@/appointment/entities/appointment.entity';
     HttpModule,
     ConfigModule,
   ],
-  controllers: [MeetingController],
+  controllers: [MeetingController, WebhooksController],
   providers: [MeetingService, ZoomService],
   exports: [MeetingService, ZoomService],
 })
