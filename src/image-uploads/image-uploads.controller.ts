@@ -1,9 +1,11 @@
-import { Controller, Post, UseInterceptors, BadRequestException, UploadedFile, Get, Query } from '@nestjs/common';
+import { Controller, Post, UseInterceptors, BadRequestException, UploadedFile, Get, Query, UseGuards } from '@nestjs/common';
 import { ApiBody, ApiOperation, ApiResponse, ApiConsumes } from '@nestjs/swagger';
 import { ImageUploadsService } from './image-uploads.service';
 import { FileInterceptor } from '@nestjs/platform-express/multer/interceptors/file.interceptor';
 import { ImageUploadResponseDto } from './dto/image-upload-response.dto';
+import { JwtAuthGuard } from 'src/auth/jwt-auth.guard';
 
+@UseGuards(JwtAuthGuard)
 @Controller('image-uploads')
 export class ImageUploadsController {
   constructor(private readonly imageUploadsService: ImageUploadsService) {}

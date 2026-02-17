@@ -7,14 +7,17 @@ import {
   Param,
   Body,
   Query,
+  UseGuards,
   ParseIntPipe,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiQuery } from '@nestjs/swagger';
 import { DoctorScheduleService } from './doctor-schedule.service';
 import { DoctorSchedule } from './entities/doctor-schedule.entity';
 import { CreateDoctorScheduleDto, UpdateDoctorScheduleDto } from './dto/doctor-schedule.dto';
+import { JwtAuthGuard } from 'src/auth/jwt-auth.guard';
 
 @ApiTags('Doctor Schedules')
+@UseGuards(JwtAuthGuard)
 @Controller('doctor-schedules')
 export class DoctorScheduleController {
   constructor(private readonly doctorScheduleService: DoctorScheduleService) {}

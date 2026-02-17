@@ -1,9 +1,11 @@
-import { Body, Controller, Post, UploadedFile, UseInterceptors, BadRequestException } from '@nestjs/common';
+import { Body, Controller, Post, UploadedFile, UseInterceptors, BadRequestException, UseGuards } from '@nestjs/common';
 import { ApiBody, ApiOperation, ApiResponse, ApiTags, ApiConsumes } from '@nestjs/swagger';
 import { OpenAIService } from './openai.service';
 import { FileInterceptor } from '@nestjs/platform-express';
+import { JwtAuthGuard } from 'src/auth/jwt-auth.guard';
 
 @ApiTags('AI')
+@UseGuards(JwtAuthGuard)
 @Controller('ai')
 export class OpenAIController {
     constructor(private readonly svc: OpenAIService) {}

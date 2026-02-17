@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, Query, ParseUUIDPipe } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, Query, ParseUUIDPipe, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiParam, ApiQuery } from '@nestjs/swagger';
 import { BookEntryService } from './book-entry.service';
 import { CreateBookEntryDto } from './dto/create-book-entry.dto';
@@ -7,8 +7,10 @@ import { QueryBookEntryDto } from './dto/query-book-entry.dto';
 import { BookEntryResponseDto, BookEntryStatisticsDto } from './dto/book-entry-response.dto';
 import { TimelineQueryDto } from './dto/timeline.dto';
 import { EntryType } from './entities/book-entry.entity';
+import { JwtAuthGuard } from 'src/auth/jwt-auth.guard';
 
 @ApiTags('book-entry')
+@UseGuards(JwtAuthGuard)
 @Controller('book-entry')
 export class BookEntryController {
   constructor(private readonly bookEntryService: BookEntryService) {}
