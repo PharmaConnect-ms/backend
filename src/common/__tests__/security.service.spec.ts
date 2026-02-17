@@ -278,10 +278,10 @@ describe('LogSanitizationService', () => {
 
   describe('message sanitization', () => {
     it('should redact passwords', () => {
-      const message = 'User login with password=testPass123';
+      const message = 'User login with password=dummyPwd999';
       const sanitized = service.sanitizeLogMessage(message);
 
-      expect(sanitized).not.toContain('testPass123');
+      expect(sanitized).not.toContain('dummyPwd999');
       expect(sanitized).toContain('[REDACTED]');
     });
 
@@ -324,8 +324,8 @@ describe('LogSanitizationService', () => {
       const obj = {
         username: 'john_doe',
         email: 'john@example.com',
-        password: 'testPass123',
-        apiKey: 'sk_test_xyzzz',
+        password: 'dummyPassword999',
+        apiKey: 'sk_test_dummyaaa',
       };
 
       const sanitized = service.sanitizeObject(obj);
@@ -339,10 +339,10 @@ describe('LogSanitizationService', () => {
       const obj = {
         user: {
           name: 'John',
-          password: 'testSecret123',
+          password: 'dummySecret888',
         },
         credentials: {
-          apiKey: 'sk_test_fake',
+          apiKey: 'sk_test_dummybbb',
         },
       };
 
@@ -372,7 +372,7 @@ describe('DataFilteringService', () => {
         username: 'john_doe',
         email: 'john@example.com',
         phone: '555-123-4567',
-        password: 'testPassSecure',
+        password: 'dummyPass777',
       };
 
       const roleAccessMap = {
@@ -408,7 +408,7 @@ describe('DataFilteringService', () => {
       const user = {
         id: 1,
         username: 'john',
-        password: 'testPassword123',
+        password: 'dummyPwd666',
         ssn: '123-45-6789',
       };
 
