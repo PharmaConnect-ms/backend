@@ -9,6 +9,7 @@ import { CreateQuickMeetingDto } from './dto/create-quick-meeting.dto';
 import { CreateStandaloneMeetingDto } from './dto/create-standalone-meeting.dto';
 import { StandaloneMeetingResponseDto } from './dto/standalone-meeting-response.dto';
 import { ZoomService } from './zoom.service';
+import { AppLoggerService } from '@/common/logging/app-logger.service';
 
 @Injectable()
 export class MeetingService {
@@ -20,6 +21,7 @@ export class MeetingService {
     private readonly appointmentRepo: Repository<Appointment>,
 
     private readonly zoomService: ZoomService,
+    private readonly logger: AppLoggerService,
   ) {}
 
   /**
@@ -71,7 +73,10 @@ export class MeetingService {
 
       return this.mapToResponseDto(savedMeeting);
     } catch (error) {
-      console.error('Error creating meeting:', error);
+      this.logger.error('Error creating meeting', {
+        appointmentId,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      }, { context: 'meeting', event: 'meeting.create.failed' });
       throw new BadRequestException('Failed to create meeting');
     }
   }
@@ -125,7 +130,10 @@ export class MeetingService {
 
       return this.mapToResponseDto(savedMeeting);
     } catch (error) {
-      console.error('Error creating quick meeting:', error);
+      this.logger.error('Error creating quick meeting', {
+        appointmentId,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      }, { context: 'meeting', event: 'meeting.quick-create.failed' });
       throw new BadRequestException('Failed to create quick meeting');
     }
   }
@@ -195,7 +203,10 @@ export class MeetingService {
       // Then delete from database
       await this.meetingRepo.remove(meeting);
     } catch (error) {
-      console.error('Error deleting meeting:', error);
+      this.logger.error('Error deleting meeting', {
+        meetingId: id,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      }, { context: 'meeting', event: 'meeting.delete.failed' });
       throw new BadRequestException('Failed to delete meeting');
     }
   }
@@ -251,7 +262,10 @@ export class MeetingService {
 
       return this.mapToStandaloneResponseDto(savedMeeting);
     } catch (error) {
-      console.error('Error creating standalone meeting:', error);
+      this.logger.error('Error creating standalone meeting', {
+        hostEmail,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      }, { context: 'meeting', event: 'meeting.standalone-create.failed' });
       throw new BadRequestException('Failed to create standalone meeting');
     }
   }

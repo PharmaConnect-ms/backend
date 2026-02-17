@@ -13,6 +13,7 @@ import { ImageUploadsService } from '@/image-uploads/image-uploads.service';
 import { ImageUploadResponseDto } from '@/image-uploads/dto/image-upload-response.dto';
 import { OpenAIService } from '@/openai/openai.service';
 import { NotificationService } from '@/notification/notification.service';
+import { AppLoggerService } from '@/common/logging/app-logger.service';
 
 @Injectable()
 export class PrescriptionService {
@@ -27,6 +28,7 @@ export class PrescriptionService {
     private readonly usersService: UsersService,
     private readonly imageUploadsService: ImageUploadsService,
     private readonly notificationService: NotificationService,
+    private readonly logger: AppLoggerService,
   ) {}
 
   private toResponseDto(prescription: Prescription): PrescriptionResponseDto {
@@ -113,11 +115,12 @@ export class PrescriptionService {
   }
 
   update(id: number, updatePrescriptionDto: UpdatePrescriptionDto) {
+    this.logger.info('Prescription update requested', { id, hasPayload: !!updatePrescriptionDto }, { context: 'prescription', event: 'prescription.update.request' });
     return `This action updates a #${id} prescription`;
-    console.log(updatePrescriptionDto);
   }
 
   remove(id: number) {
+    this.logger.info('Prescription delete requested', { id }, { context: 'prescription', event: 'prescription.delete.request' });
     return `This action removes a #${id} prescription`;
   }
 

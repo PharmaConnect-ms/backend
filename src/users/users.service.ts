@@ -6,12 +6,16 @@ import { User } from './user.entity';
 import { CreateUserDto } from './create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { UserResponseDto, filterUserResponse } from './dto/user-response.dto';
+import { SecurityEventService } from '@/common/logging/security-event.service';
+import { RequestContextService } from '@/common/logging/request-context.service';
 
 @Injectable()
 export class UsersService {
   constructor(
     @InjectRepository(User)
     private usersRepository: Repository<User>,
+    private readonly securityEvents: SecurityEventService,
+    private readonly requestContext: RequestContextService,
   ) {}
 
   async createUser(createUserDto: CreateUserDto): Promise<User> {
@@ -27,7 +31,14 @@ export class UsersService {
         return existingUser; // or maybe throw an exception or update user details
       }
       const user = this.usersRepository.create({ username, email, role, provider });
-      return this.usersRepository.save(user);
+      const savedUser = await this.usersRepository.save(user);
+      const actor = this.requestContext.get();
+      if (actor?.userRole === 'admin') {
+        this.securityEvents.logAdminAction('user.create', savedUser.id, {
+          role: savedUser.role,
+        });
+      }
+      return savedUser;
     } else {
       if (!password) {
         throw new BadRequestException('Password is required for local users');
@@ -50,7 +61,14 @@ export class UsersService {
         provider,
       });
 
-      return this.usersRepository.save(user);
+      const savedUser = await this.usersRepository.save(user);
+      const actor = this.requestContext.get();
+      if (actor?.userRole === 'admin') {
+        this.securityEvents.logAdminAction('user.create', savedUser.id, {
+          role: savedUser.role,
+        });
+      }
+      return savedUser;
     }
   }
 
@@ -136,10 +154,20 @@ export class UsersService {
       }
     }
 
+    const previousRole = user.role;
+
     // Update user properties
     Object.assign(user, updateUserDto);
     
     const updatedUser = await this.usersRepository.save(user);
+    const actor = this.requestContext.get();
+    if (actor?.userRole === 'admin' || updateUserDto.role !== undefined) {
+      this.securityEvents.logAdminAction('user.update', id, {
+        changedFields: Object.keys(updateUserDto),
+        roleChanged: previousRole !== updatedUser.role,
+      });
+    }
+
     return filterUserResponse(updatedUser);
   }
 
