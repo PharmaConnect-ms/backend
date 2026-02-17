@@ -15,9 +15,12 @@ username: string;
 email: string;
 
 
-@ApiProperty({ description: 'User password', example: 'P@ssw0rd' })
+@ApiProperty({ description: 'User password', example: 'Str0ngP@ssw0rd!' })
 @IsString()
-@Length(8, 100)
+@Length(12, 100)
+@Matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{12,100}$/, {
+  message: 'Password must be at least 12 characters and include uppercase, lowercase, number, and special character',
+})
 password: string|null;
 
 @ApiProperty({ description: 'User role', example: 'admin' })
