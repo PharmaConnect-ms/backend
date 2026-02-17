@@ -13,6 +13,8 @@ import { ImageUploadsService } from '@/image-uploads/image-uploads.service';
 import { ImageUploadResponseDto } from '@/image-uploads/dto/image-upload-response.dto';
 import { OpenAIService } from '@/openai/openai.service';
 import { NotificationService } from '@/notification/notification.service';
+import createDOMPurify from 'dompurify';
+import { JSDOM } from 'jsdom';
 
 @Injectable()
 export class PrescriptionService {
@@ -132,7 +134,21 @@ export class PrescriptionService {
     );
     
     if (updatedSummary) {
-      await this.usersService.updateUserSummary(patientId, updatedSummary);
+      // Sanitize the AI-updated summary before persisting to prevent stored XSS
+      try {
+        const window = new JSDOM('').window as unknown as Window;
+        const DOMPurify = createDOMPurify(window as any);
+        const sanitized = DOMPurify.sanitize(updatedSummary, {
+          ALLOWED_TAGS: ['b', 'i', 'em', 'strong', 'p', 'ul', 'ol', 'li', 'br'],
+          ALLOWED_ATTR: [],
+        });
+
+        await this.usersService.updateUserSummary(patientId, sanitized);
+      } catch (e) {
+        // If sanitization fails for any reason, fallback to plain-text encode
+        const fallback = String(updatedSummary).replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        await this.usersService.updateUserSummary(patientId, fallback);
+      }
       
       // Extract reminders from the updated summary (not just the new prescription)
       const reminders = await this.openAIService.extractRemindersFromSummary(updatedSummary);
