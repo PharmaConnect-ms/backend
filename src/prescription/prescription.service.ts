@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Prescription } from './entities/prescription.entity';
@@ -18,6 +18,7 @@ import { JSDOM } from 'jsdom';
 
 @Injectable()
 export class PrescriptionService {
+  private readonly logger = new Logger(PrescriptionService.name);
   constructor(
     @InjectRepository(Prescription)
     private readonly prescriptionRepository: Repository<Prescription>,
@@ -145,8 +146,10 @@ export class PrescriptionService {
 
         await this.usersService.updateUserSummary(patientId, sanitized);
       } catch (e) {
-        // If sanitization fails for any reason, fallback to plain-text encode
-        const fallback = String(updatedSummary).replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        // Log the sanitization error and fallback to plain-text encoding
+        this.logger.warn('Sanitization failed; falling back to plain-text encoding',
+          e?.stack || (e && String(e)));
+        const fallback = String(updatedSummary).replaceAll('<', '&lt;').replaceAll('>', '&gt;');
         await this.usersService.updateUserSummary(patientId, fallback);
       }
       
