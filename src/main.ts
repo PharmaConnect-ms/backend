@@ -2,7 +2,7 @@ import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { ConfigService } from '@nestjs/config';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
-import { randomUUID } from 'crypto';
+import { randomUUID } from 'node:crypto';
 import { RequestContextService } from '@/common/logging/request-context.service';
 import { AppLoggerService } from '@/common/logging/app-logger.service';
 

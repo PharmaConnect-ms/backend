@@ -11,7 +11,7 @@ import { LoginRateLimitGuard } from '@/common/security/login-rate-limit.guard';
 @Controller('auth')
 export class AuthController {
   constructor(
-    private authService: AuthService,
+    private readonly authService: AuthService,
     private readonly securityEvents: SecurityEventService,
   ) {}
 

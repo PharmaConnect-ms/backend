@@ -1,5 +1,5 @@
-import { mkdir, readdir, rename, stat, unlink, writeFile } from 'fs/promises';
-import * as path from 'path';
+import { mkdir, readdir, rename, stat, unlink, writeFile } from 'node:fs/promises';
+import * as path from 'node:path';
 import { Injectable } from '@nestjs/common';
 import { RequestContextService } from '@/common/logging/request-context.service';
 import { redactSensitive } from '@/common/logging/redaction.util';
@@ -67,7 +67,10 @@ export class AuditLogService {
         return;
       }
 
-      const rotatedPath = path.join(this.logsDir, `audit-${new Date().toISOString().replace(/[:.]/g, '-')}.log`);
+      const rotatedPath = path.join(
+        this.logsDir,
+        `audit-${new Date().toISOString().replaceAll(':', '-').replaceAll('.', '-')}.log`,
+      );
       await rename(this.auditPath, rotatedPath);
       await this.cleanupOldArchives();
     } catch {

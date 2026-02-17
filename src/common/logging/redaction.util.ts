@@ -17,7 +17,7 @@ const SENSITIVE_KEYS = new Set([
 ]);
 
 function isSensitiveKey(key: string): boolean {
-  const normalized = key.replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
+  const normalized = key.replaceAll(/[^a-zA-Z0-9]/g, '').toLowerCase();
   return SENSITIVE_KEYS.has(normalized);
 }
 
