@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Prescription } from './entities/prescription.entity';
@@ -13,9 +13,12 @@ import { ImageUploadsService } from '@/image-uploads/image-uploads.service';
 import { ImageUploadResponseDto } from '@/image-uploads/dto/image-upload-response.dto';
 import { OpenAIService } from '@/openai/openai.service';
 import { NotificationService } from '@/notification/notification.service';
+import createDOMPurify from 'dompurify';
+import { JSDOM } from 'jsdom';
 
 @Injectable()
 export class PrescriptionService {
+  private readonly logger = new Logger(PrescriptionService.name);
   constructor(
     @InjectRepository(Prescription)
     private readonly prescriptionRepository: Repository<Prescription>,
@@ -132,7 +135,23 @@ export class PrescriptionService {
     );
     
     if (updatedSummary) {
-      await this.usersService.updateUserSummary(patientId, updatedSummary);
+      // Sanitize the AI-updated summary before persisting to prevent stored XSS
+      try {
+        const window = new JSDOM('').window as unknown as Window;
+        const DOMPurify = createDOMPurify(window as any);
+        const sanitized = DOMPurify.sanitize(updatedSummary, {
+          ALLOWED_TAGS: ['b', 'i', 'em', 'strong', 'p', 'ul', 'ol', 'li', 'br'],
+          ALLOWED_ATTR: [],
+        });
+
+        await this.usersService.updateUserSummary(patientId, sanitized);
+      } catch (e) {
+        // Log the sanitization error and fallback to plain-text encoding
+        this.logger.warn('Sanitization failed; falling back to plain-text encoding',
+          e?.stack || (e && String(e)));
+        const fallback = String(updatedSummary).replaceAll('<', '&lt;').replaceAll('>', '&gt;');
+        await this.usersService.updateUserSummary(patientId, fallback);
+      }
       
       // Extract reminders from the updated summary (not just the new prescription)
       const reminders = await this.openAIService.extractRemindersFromSummary(updatedSummary);
