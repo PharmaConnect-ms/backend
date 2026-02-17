@@ -137,6 +137,8 @@ If nothing relevant, return [].`,
       response_format: { type: 'json_object' },
     });
 
+    console.log(res.choices[0].message.content);
+
     try {
       const content = res.choices[0].message.content;
       if (typeof content !== 'string') {
