@@ -278,18 +278,18 @@ describe('LogSanitizationService', () => {
 
   describe('message sanitization', () => {
     it('should redact passwords', () => {
-      const message = 'User login with password=secret123';
+      const message = 'User login with password=testPass123';
       const sanitized = service.sanitizeLogMessage(message);
 
-      expect(sanitized).not.toContain('secret123');
+      expect(sanitized).not.toContain('testPass123');
       expect(sanitized).toContain('[REDACTED]');
     });
 
     it('should redact API keys', () => {
-      const message = 'API call with apikey=sk_live_xyz123abc';
+      const message = 'API call with apikey=sk_test_xyz123';
       const sanitized = service.sanitizeLogMessage(message);
 
-      expect(sanitized).not.toContain('sk_live_xyz123abc');
+      expect(sanitized).not.toContain('sk_test_xyz123');
       expect(sanitized).toContain('[REDACTED]');
     });
 
@@ -324,8 +324,8 @@ describe('LogSanitizationService', () => {
       const obj = {
         username: 'john_doe',
         email: 'john@example.com',
-        password: 'secret123',
-        apiKey: 'sk_test_xyz',
+        password: 'testPass123',
+        apiKey: 'sk_test_xyzzz',
       };
 
       const sanitized = service.sanitizeObject(obj);
@@ -339,10 +339,10 @@ describe('LogSanitizationService', () => {
       const obj = {
         user: {
           name: 'John',
-          password: 'secret',
+          password: 'testSecret123',
         },
         credentials: {
-          apiKey: 'sk_test',
+          apiKey: 'sk_test_fake',
         },
       };
 
@@ -372,7 +372,7 @@ describe('DataFilteringService', () => {
         username: 'john_doe',
         email: 'john@example.com',
         phone: '555-123-4567',
-        password: 'secret',
+        password: 'testPassSecure',
       };
 
       const roleAccessMap = {
