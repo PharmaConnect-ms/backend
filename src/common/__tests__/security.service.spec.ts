@@ -310,7 +310,7 @@ describe('LogSanitizationService', () => {
     });
 
     it('should redact JWT tokens', () => {
-      const token = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.TJVA95OrM7E2cBab30RMHrHDcEfxjoYZgeFONFh7HgQ';
+      const token = 'Bearer.TestToken.Signature123';
       const message = `Bearer token: ${token}`;
       const sanitized = service.sanitizeLogMessage(message);
 
@@ -408,7 +408,7 @@ describe('DataFilteringService', () => {
       const user = {
         id: 1,
         username: 'john',
-        password: 'secret',
+        password: 'testPassword123',
         ssn: '123-45-6789',
       };
 
