@@ -4,54 +4,66 @@ import * as bcrypt from 'bcryptjs';
 import { UsersService } from '../users/users.service';
 import { UserDto } from './dto/user.dto';
 import { GoogleUserDto } from './dto/google.dto';
+import { SecurityEventService } from '@/common/logging/security-event.service';
+import { RequestContextService } from '@/common/logging/request-context.service';
 
 @Injectable()
 export class AuthService {
   constructor(
     private usersService: UsersService,
     private jwtService: JwtService,
+    private readonly securityEvents: SecurityEventService,
+    private readonly requestContext: RequestContextService,
   ) {}
 
   // AuthService.ts
   async validateUser(usernameOrEmail: string, password: string) {
-    if (!usernameOrEmail || !password) {
-      throw new UnauthorizedException('Username/email and password are required');
+    try {
+      if (!usernameOrEmail || !password) {
+        throw new UnauthorizedException('Username/email and password are required');
+      }
+
+      // Try finding user by either username or email
+      let user: UserDto | null; 
+      const isEmailInput = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(usernameOrEmail);
+      
+      if (isEmailInput) {
+        user = await this.usersService.findByEmail(usernameOrEmail);
+      } else {
+        user = await this.usersService.findByUsername(usernameOrEmail);
+      }
+
+      if (!user) {
+        throw new UnauthorizedException('User not found');
+      }
+
+      if (!user.password) {
+        throw new UnauthorizedException('Password not set for this user');
+      }
+
+      const isPasswordValid = await bcrypt.compare(password, user.password);
+      if (!isPasswordValid) {
+        throw new UnauthorizedException('Invalid credentials');
+      }
+
+      const token = this.generateToken(user);
+      const payload = {
+        id: user.id,
+        username: user.username,
+        email: user.email,
+        role: user.role,
+        age: user.age,
+        phone: user.phone,
+      };
+
+      this.securityEvents.logAuthSuccess(user.id, 'password');
+      return { ...payload, token };
+    } catch (error) {
+      const ctx = this.requestContext.get();
+      const reason = error instanceof Error ? error.message : 'Unknown authentication error';
+      this.securityEvents.logAuthFailure(usernameOrEmail, reason, ctx?.ip);
+      throw error;
     }
-
-    // Try finding user by either username or email
-    let user: UserDto | null; 
-    const isEmailInput = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(usernameOrEmail);
-    
-    if (isEmailInput) {
-      user = await this.usersService.findByEmail(usernameOrEmail);
-    } else {
-      user = await this.usersService.findByUsername(usernameOrEmail);
-    }
-
-    if (!user) {
-      throw new UnauthorizedException('User not found');
-    }
-
-    if (!user.password) {
-      throw new UnauthorizedException('Password not set for this user');
-    }
-
-    const isPasswordValid = await bcrypt.compare(password, user.password);
-    if (!isPasswordValid) {
-      throw new UnauthorizedException('Invalid credentials');
-    }
-
-    const token = this.generateToken(user);
-    const payload = {
-      id: user.id,
-      username: user.username,
-      email: user.email,
-      role: user.role,
-      age: user.age,
-      phone: user.phone,
-    };
-
-    return { ...payload, token };
   }
 
   generateToken(user: UserDto) {
@@ -76,6 +88,7 @@ export class AuthService {
       });
     }
 
+    this.securityEvents.logAuthSuccess(user.id, 'google');
     return this.generateToken(user);
   }
 }

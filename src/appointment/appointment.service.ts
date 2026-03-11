@@ -15,6 +15,7 @@ import { Meeting } from '@/meeting/entities/meeting.entity';
 import { TimeSlot } from './entities/time-slot.entity';
 import { TimeSlotStatus } from './types';
 import { MeetingService } from '@/meeting/meeting.service';
+import { AppLoggerService } from '@/common/logging/app-logger.service';
 
 @Injectable()
 export class AppointmentService {
@@ -33,6 +34,7 @@ export class AppointmentService {
 
     @Inject(forwardRef(() => MeetingService))
     private readonly meetingService: MeetingService,
+    private readonly logger: AppLoggerService,
   ) {}
 
   private toResponseDto(appointment: Appointment): AppointmentResponseDto {
@@ -130,9 +132,14 @@ export class AppointmentService {
           agenda: `Medical consultation appointment between Dr. ${timeSlot.doctorSchedule.doctor.username} and patient ${patient.username}`,
         });
 
-        console.log(`Zoom meeting created automatically for online appointment ${savedAppointment.id}`);
+        this.logger.info('Automatic Zoom meeting created for appointment', {
+          appointmentId: savedAppointment.id,
+        }, { context: 'appointment', event: 'appointment.meeting.auto-created' });
       } catch (error) {
-        console.error('Failed to create Zoom meeting for online appointment:', error);
+        this.logger.error('Failed to create Zoom meeting for online appointment', {
+          appointmentId: savedAppointment.id,
+          error: error instanceof Error ? error.message : 'Unknown error',
+        }, { context: 'appointment', event: 'appointment.meeting.auto-create-failed' });
         // Don't throw error here to prevent appointment creation failure
         // The meeting can be created later via the meeting API
       }

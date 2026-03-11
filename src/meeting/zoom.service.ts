@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { HttpService } from '@nestjs/axios';
 import { firstValueFrom } from 'rxjs';
 import { AxiosError } from 'axios';
+import { AppLoggerService } from '@/common/logging/app-logger.service';
 
 export interface ZoomMeetingRequest {
   topic: string;
@@ -66,6 +67,7 @@ export class ZoomService {
   constructor(
     private readonly configService: ConfigService,
     private readonly httpService: HttpService,
+    private readonly logger: AppLoggerService,
   ) {}
 
   private handleError(error: unknown, context: string): never {
@@ -73,7 +75,7 @@ export class ZoomService {
     const axiosError = error as AxiosError;
     const responseData = axiosError.response?.data;
     
-    console.error(`${context}:`, responseData || errorMessage);
+    this.logger.error(context, { responseData, errorMessage }, { context: 'zoom', event: 'zoom.request.error' });
     throw new InternalServerErrorException(`${context}: ${errorMessage}`);
   }
 
@@ -124,7 +126,9 @@ export class ZoomService {
         ? String(errorData.error_description) 
         : axiosError.message;
       
-      console.error('Error getting Zoom access token:', errorData || axiosError.message);
+      this.logger.error('Error getting Zoom access token', {
+        errorData: errorData ?? axiosError.message,
+      }, { context: 'zoom', event: 'zoom.token.failed' });
       throw new InternalServerErrorException(
         `Failed to get Zoom access token. Please verify your Zoom API credentials. Error: ${errorDescription}`
       );
@@ -167,7 +171,10 @@ export class ZoomService {
         }
       }
 
-      console.error('Error creating Zoom meeting:', errorData || axiosError.message);
+      this.logger.error('Error creating Zoom meeting', {
+        userEmail,
+        errorData: errorData ?? axiosError.message,
+      }, { context: 'zoom', event: 'zoom.meeting.create-failed' });
 
       // Zoom returns specific error codes/messages when the token lacks required scopes.
       // Detect the common 'missing scopes' error and return a helpful message.

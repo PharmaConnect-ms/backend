@@ -12,6 +12,7 @@ import { CreateBookEntryDto } from '@/book-entry/dto/create-book-entry.dto';
 import { CreateFollowUpDto } from '@/follow-up/dto/create-follow-up.dto';
 import { QueryEntriesDto } from './dto/query-entries.dto';
 import { FollowUpStatus } from '@/follow-up/entities/follow-up.entity';
+import { AppLoggerService } from '@/common/logging/app-logger.service';
 
 @Injectable()
 export class ConditionBookService {
@@ -19,6 +20,7 @@ export class ConditionBookService {
     @InjectRepository(ConditionBook) private readonly bookRepo: Repository<ConditionBook>,
     @InjectRepository(BookEntry) private readonly entryRepo: Repository<BookEntry>,
     @InjectRepository(FollowUp) private readonly folRepo: Repository<FollowUp>,
+    private readonly logger: AppLoggerService,
   ) {}
 
   // BOOKS
@@ -38,7 +40,7 @@ export class ConditionBookService {
   }
 
   async listBooksByPatient(patientId: string) {
-    console.log('Listing books for patient:', patientId);   
+    this.logger.info('List condition books by patient', { patientId }, { context: 'condition-book', event: 'condition-book.list.patient' });
     return this.bookRepo.find({ where: { patientId }, order: { updatedAt: 'DESC' } });
   }
 

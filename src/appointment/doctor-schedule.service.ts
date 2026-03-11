@@ -9,6 +9,7 @@ import { DoctorSchedule } from './entities/doctor-schedule.entity';
 import { CreateDoctorScheduleDto, UpdateDoctorScheduleDto } from './dto/doctor-schedule.dto';
 import { User } from '@/users/user.entity';
 import { TimeSlotService } from './time-slot.service';
+import { AppLoggerService } from '@/common/logging/app-logger.service';
 
 @Injectable()
 export class DoctorScheduleService {
@@ -20,6 +21,7 @@ export class DoctorScheduleService {
     private readonly userRepo: Repository<User>,
 
     private readonly timeSlotService: TimeSlotService,
+    private readonly logger: AppLoggerService,
   ) {}
 
   async create(createDto: CreateDoctorScheduleDto): Promise<DoctorSchedule> {
@@ -93,7 +95,10 @@ export class DoctorScheduleService {
       await this.timeSlotService.createTimeSlotsForNewSchedule(savedSchedule.id);
     } catch (error) {
       // If time slot generation fails, log the error but don't fail the schedule creation
-      console.error('Failed to generate time slots for schedule:', savedSchedule.id, error instanceof Error ? error.message : 'Unknown error');
+      this.logger.error('Failed to generate time slots for schedule', {
+        scheduleId: savedSchedule.id,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      }, { context: 'doctor-schedule', event: 'doctor-schedule.timeslots.create-failed' });
     }
 
     return savedSchedule;
@@ -223,7 +228,10 @@ export class DoctorScheduleService {
         // Note: This will handle existing slots appropriately (return them if they exist)
         await this.timeSlotService.createTimeSlotsForNewSchedule(updatedSchedule.id);
       } catch (error) {
-        console.error('Failed to regenerate time slots for updated schedule:', updatedSchedule.id, error instanceof Error ? error.message : 'Unknown error');
+        this.logger.error('Failed to regenerate time slots for updated schedule', {
+          scheduleId: updatedSchedule.id,
+          error: error instanceof Error ? error.message : 'Unknown error',
+        }, { context: 'doctor-schedule', event: 'doctor-schedule.timeslots.regenerate-failed' });
       }
     }
     

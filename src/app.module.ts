@@ -25,10 +25,12 @@ import { FollowUpModule } from './follow-up/follow-up.module';
 import { ConditionBook } from './condition-book/entities/condition-book.entity';
 import { BookEntry } from './book-entry/entities/book-entry.entity';
 import { FollowUp } from './follow-up/entities/follow-up.entity';
+import { CommonModule } from './common/common.module';
 
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
+    CommonModule,
     ScheduleModule.forRoot(),
     TypeOrmModule.forRoot({
       type: 'mysql',
